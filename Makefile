@@ -3,7 +3,7 @@ targets: curve25519-donna.a curve25519-donna-x86-64.a
 test: test-donna test-donna-x86-64
 
 clean:
-	rm -f *.o *.a *.pp test-curve255-donna test-curve25519-donna-x86-64 speed-curve25519-donna speed-curve25519-donna-x86-64 test-sc-curve25519-donna-x86-64
+	rm -f *.o *.a *.pp test-curve25519-donna test-curve25519-donna-x86-64 speed-curve25519-donna speed-curve25519-donna-x86-64 test-sc-curve25519-donna-x86-64
 
 curve25519-donna.a: curve25519-donna.o
 	ar -rc curve25519-donna.a curve25519-donna.o
@@ -42,4 +42,4 @@ speed-curve25519-donna-x86-64: speed-curve25519.c curve25519-donna-x86-64.a
 	gcc -o speed-curve25519-donna-x86-64 speed-curve25519.c curve25519-donna-x86-64.a -Wall
 
 test-sc-curve25519-donna-x86-64: test-sc-curve25519.c curve25519-donna-x86-64.a
-	gcc -o test-sc-curve25519 -O test-sc-curve25519.c curve25519-donna-x86-64.a test-sc-curve25519.s -Wall
+	gcc -o test-sc-curve25519-donna-x86-64 -O test-sc-curve25519.c curve25519-donna-x86-64.a test-sc-curve25519.s -Wall

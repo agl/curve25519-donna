@@ -55,6 +55,7 @@ extern void fcontract(u8 *output, const felem *input);
 extern void freduce_coefficients(felem *inout);
 extern void fscalar(felem *output, const felem *input);
 extern void fdifference_backwards(felem *output, const felem *input);
+extern void cmult(felem *x, felem *z, const u8 *n, const felem *q);
 
 /* Input: Q, Q', Q-Q'
  * Output: 2Q, Q+Q'
