@@ -171,7 +171,6 @@ movq %rcx,%xmm15
 MUL(I4,J4)
 
 donna_reduce:
-
 # We done with the original inputs now, so we start reusing them
 # At this point we have a degree 8 resulting polynomial and we need to reduce
 # mod 2**255-19. Since 2**255 is in our polynomial, we can multiply the
@@ -226,8 +225,9 @@ movq %xmm8,%r14
 
 # Coefficient reduction
 
-# Bottom 50-bits set
+# Bottom 51-bits set
 mov $0x7ffffffffffff,%rbx
+mov $19,%rcx
 
 coeffreduction:
 
@@ -247,31 +247,24 @@ xor %srchi,%srchi ; \
 mov %rax,%srclo ; \
 and %rbx,%srclo
 
+#define CARRYCHAIN19(srchi,srclo,desthi,destlo) \
+mov %srclo,%rax ; \
+shr $51,%srclo ; \
+shl $13,%srchi ; \
+or %srclo,%srchi ; \
+imul $19,%srchi ; \
+add %srchi,%destlo ; \
+adc $0,%desthi ; \
+xor %srchi,%srchi ; \
+mov %rax,%srclo ; \
+and %rbx,%srclo
+
 CARRYCHAIN(rdi,rsi,r9,r8)
 CARRYCHAIN(r9,r8,r11,r10)
 CARRYCHAIN(r11,r10,r13,r12)
 CARRYCHAIN(r13,r12,r15,r14)
-
-# CARRYCHAIN(r15,r14,rdi,rsi)
-
-mov %r14,%rax
-shr $51,%r14
-shl $13,%r15
-or %r14,%r15
-
-jz carrydone
-
-mov $19,%r14
-imul %r14,%r15
-add %r15,%rsi
-adc $0,%rdi
-xor %r15,%r15
-mov %rax,%r14
-and %rbx,%r14
-
-jmp coeffreduction
-
-carrydone:
+CARRYCHAIN19(r15,r14,rdi,rsi)
+CARRYCHAIN(rdi,rsi,r9,r8)
 
 # write out results, which are in rsi, r8, r10, r12, rax
 # output pointer is on top of the stack
@@ -282,7 +275,7 @@ mov %rsi,(%rdi)
 mov %r8,8(%rdi)
 mov %r10,16(%rdi)
 mov %r12,24(%rdi)
-mov %rax,32(%rdi)
+mov %r14,32(%rdi)
 
 pop %r15
 pop %r14
@@ -459,6 +452,7 @@ sub 16(%rdi),%r9
 sub 24(%rdi),%r10
 sub 32(%rdi),%r11
 
+# 2**51
 mov $0x8000000000000,%rdx
 
 fdifference_backwards_loop:
@@ -476,20 +470,24 @@ add %rcx,%src ; \
 shr $51,%rcx ; \
 sub %rcx,%dest
 
+#define NEGCHAIN19(src,dest) \
+mov %src,%rcx ; \
+sar $63,%rcx ; \
+mov %rcx,%rsi ; \
+and %rdx,%rcx ; \
+add %rcx,%src ; \
+and $19,%rsi ; \
+sub %rsi,%dest
+
 NEGCHAIN(rax,r8)
 NEGCHAIN(r8,r9)
 NEGCHAIN(r9,r10)
 NEGCHAIN(r10,r11)
-
-mov %r11,%rcx
-sar $63,%rcx
-mov %rcx,%rsi
-and %rdx,%rcx
-add %rcx,%r11
-and $19,%rsi
-sub %rsi,%rax
-
-js fdifference_backwards_loop
+NEGCHAIN19(r11,rax)
+NEGCHAIN(rax,r8)
+NEGCHAIN(r8,r9)
+NEGCHAIN(r9,r10)
+NEGCHAIN(r10,r11)
 
 mov %rax,(%rdi)
 mov %r8,8(%rdi)
@@ -595,15 +593,9 @@ and %rcx,%r11
 
 mov %r12,%rax
 shr $51,%rax
-jz carrydone_
-mov $19,%rdx
-mul %rdx
+imul $19,%rax
 add %rax,%r8
 and %rcx,%r12
-
-jmp carrychain_
-
-carrydone_:
 
 mov %r8,(%rdi)
 mov %r9,8(%rdi)
