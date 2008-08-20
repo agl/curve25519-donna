@@ -411,12 +411,8 @@ static void fmonty(felem *x2, felem *z2,  /* output 2Q */
   memcpy(origxprime, xxprime, sizeof(felem) * 10);
   fsum(xxprime, zzprime);
   fdifference(zzprime, origxprime);
-  fproduct(xxxprime, xxprime, xxprime);
-  fproduct(zzzprime, zzprime, zzprime);
-  freduce_degree(xxxprime);
-  freduce_coefficients(xxxprime);
-  freduce_degree(zzzprime);
-  freduce_coefficients(zzzprime);
+  fsquare(xxxprime, xxprime);
+  fsquare(zzzprime, zzprime);
   fproduct(zzprime, zzzprime, qmqp);
   freduce_degree(zzprime);
   freduce_coefficients(zzprime);

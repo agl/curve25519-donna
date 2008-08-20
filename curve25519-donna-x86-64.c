@@ -91,7 +91,7 @@ fmonty(felem *x2,  /* output 2Q */
   fsum(xxprime, zzprime);
   fdifference_backwards(zzprime, origxprime);
   fsquare(x3, xxprime);
-  fmul(zzzprime, zzprime, zzprime);
+  fsquare(zzzprime, zzprime);
   fmul(z3, zzzprime, qmqp);
 
   fsquare(xx, x);
