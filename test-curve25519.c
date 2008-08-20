@@ -39,7 +39,10 @@ main()
     doit(e2e1k,e2,e1k);
     doit(e2k,e2,k);
     doit(e1e2k,e1,e2k);
-    for (i = 0;i < 32;++i) if (e1e2k[i] != e2e1k[i]) printf("fail\n");
+    for (i = 0;i < 32;++i) if (e1e2k[i] != e2e1k[i]) {
+      printf("fail\n");
+      return 1;
+    }
     for (i = 0;i < 32;++i) e1[i] ^= e2k[i];
     for (i = 0;i < 32;++i) e2[i] ^= e1k[i];
     for (i = 0;i < 32;++i) k[i] ^= e1e2k[i];
