@@ -3,7 +3,6 @@
 #
 # Code released into the public domain
 
-
 ################################################################################
 # curve25519-donna.s - an x86-64 bit implementation of curve25519. See the
 # comments at the top of curve25519-donna.c
@@ -17,6 +16,8 @@
 ################################################################################
 .text
 
+.extern fmonty
+
 .globl fmul
 .globl fsquare
 .globl fexpand
@@ -24,6 +25,7 @@
 .globl freduce_coefficients
 .globl fscalar
 .globl fdifference_backwards
+.globl cmult
 
 ################################################################################
 # fmul - multiply two 256-bit numbers
@@ -683,5 +685,234 @@ shr $39,%r9
 shl $12,%r10
 or %r10,%r9
 mov %r9,24(%rdi)
+
+ret
+
+################################################################################
+# cmult - calculates nQ wher Q is the x-coordinate of a point on the curve
+#
+# Registers: RDI: (output) final x
+#            RSI: (output) final z
+#            RDX: (input) n (big-endian)
+#            RCX: (input) q (big-endian)
+#
+ /* Calculates nQ where Q is the x-coordinate of a point on the curve
+  *
+  *   resultx/resultz: the x coordinate of the resulting curve point (short form)
+  *   n: a little endian, 32-byte number
+  *   q: a point of the curve (short form)
+  */
+/*
+ static void
+ cmult(felem *resultx, felem *resultz, const u8 *n, const felem *q) {
+   felem a[5] = {0}, b[5] = {1}, c[5] = {1}, d[5] = {0};
+   felem *nqpqx = a, *nqpqz = b, *nqx = c, *nqz = d, *t;
+   felem e[5] = {0}, f[5] = {1}, g[5] = {0}, h[5] = {1};
+   felem *nqpqx2 = e, *nqpqz2 = f, *nqx2 = g, *nqz2 = h;
+
+   unsigned i, j;
+
+   memcpy(nqpqx, q, sizeof(felem) * 5);
+
+   for (i = 0; i < 32; ++i) {
+     u8 byte = n[31 - i];
+     for (j = 0; j < 8; ++j) {
+       if (byte & 0x80) {
+         fmonty(nqpqx2, nqpqz2,
+                nqx2, nqz2,
+                nqpqx, nqpqz,
+                nqx, nqz,
+                q);
+       } else {
+         fmonty(nqx2, nqz2,
+                nqpqx2, nqpqz2,
+                nqx, nqz,
+                nqpqx, nqpqz,
+                q);
+       }
+
+       t = nqx;
+       nqx = nqx2;
+       nqx2 = t;
+       t = nqz;
+       nqz = nqz2;
+       nqz2 = t;
+       t = nqpqx;
+       nqpqx = nqpqx2;
+       nqpqx2 = t;
+       t = nqpqz;
+       nqpqz = nqpqz2;
+       nqpqz2 = t;
+
+       byte <<= 1;
+     }
+   }
+
+   memcpy(resultx, nqx, sizeof(felem) * 5);
+   memcpy(resultz, nqz, sizeof(felem) * 5);
+ }
+*/
+################################################################################
+cmult:
+
+push %rbp
+push %r13
+push %r14
+
+mov %rsp,%rbp
+mov $63,%r8
+not %r8
+and %r8,%rsp
+
+mov %rdx,%r13
+mov %rcx,%r14
+
+sub $512,%rsp
+
+# value nQ+Q (x)
+movq (%rcx),%rax
+movq %rax,(%rsp)
+movq 8(%rcx),%r8
+movq %r8,8(%rsp)
+movq 16(%rcx),%r9
+movq %r9,16(%rsp)
+movq 24(%rcx),%r10
+movq %r10,24(%rsp)
+movq 32(%rcx),%r11
+movq %r11,32(%rsp)
+
+# value nQ+Q (z)
+movq $1,64(%rsp)
+movq $0,72(%rsp)
+movq $0,80(%rsp)
+movq $0,88(%rsp)
+movq $0,96(%rsp)
+
+# value nQ (x)
+movq $1,128(%rsp)
+movq $0,136(%rsp)
+movq $0,144(%rsp)
+movq $0,152(%rsp)
+movq $0,160(%rsp)
+
+# value nQ (z)
+movq $0,192(%rsp)
+movq $0,200(%rsp)
+movq $0,208(%rsp)
+movq $0,216(%rsp)
+movq $0,224(%rsp)
+
+push %rbx
+push %r12
+push %r15
+push %rdi
+push %rsi
+
+# The stack looks like
+# (nQ)'
+# (nQ+Q)'
+# nQ
+# nQ+Q
+# saved registers  (40-bytes)   <-- %rsp
+# We switch between the two banks with an offset in %r12, starting by writing
+# into the prime bank and reading from the non-prime bank.
+# Based on the current MSB of the operand, we flip the two values over based
+# on an offset in %r8 for the first first member and %r9 for the second
+
+mov $256,%r12
+mov $32,%rbx
+
+cmult_loop_outer:
+
+# On entry to the loop, the word offset is kept in %rbx. We dec 8 bytes and
+# then store the outer loop counter in the top 32-bits of %rbx. The inner loop
+# counter is kept in %ebx
+
+sub $8,%rbx
+movq (%r13,%rbx),%r15
+shl $32,%rbx
+
+or $64,%rbx
+
+cmult_loop_inner:
+
+# Register allocation:
+#  r8: the element switch offset
+#  r9: complement r8
+#  r11: complement r12
+# Preserved by fmonty:
+#  rbx: loop counters
+#  r12: bank switch offset
+#  r13: (input) n
+#  r14: (input) q
+#  r15: the current qword, getting left shifted
+
+mov $128,%r8
+xor %r9,%r9
+bt $63,%r15
+cmovc %r8,%r9
+mov %r9,%r8
+xor $128,%r8
+
+shl $1,%r15
+
+mov %r12,%r11
+xor $256,%r11
+
+lea 40(%rsp,%r12),%rdi
+mov %rdi,%rsi
+lea 40(%rsp,%r11),%rdx
+mov %rdx,%rcx
+add %r8,%rdi
+add %r9,%rsi
+add %r8,%rdx
+add %r9,%rcx
+mov %r14,%r8
+call fmonty
+
+xor $256,%r12
+
+dec %rbx
+cmp $0,%ebx
+jnz cmult_loop_inner
+
+shr $32,%rbx
+cmp $0,%rbx
+jnz cmult_loop_outer
+
+pop %rsi
+pop %rdi
+pop %r15
+pop %r12
+pop %rbx
+
+lea 128(%rsp),%r8
+
+movq (%r8),%rax
+movq %rax,(%rdi)
+movq 8(%r8),%rax
+movq %rax,8(%rdi)
+movq 16(%r8),%rax
+movq %rax,16(%rdi)
+movq 24(%r8),%rax
+movq %rax,24(%rdi)
+movq 32(%r8),%rax
+movq %rax,32(%rdi)
+
+movq 64(%r8),%rax
+movq %rax,(%rsi)
+movq 72(%r8),%rax
+movq %rax,8(%rsi)
+movq 80(%r8),%rax
+movq %rax,16(%rsi)
+movq 88(%r8),%rax
+movq %rax,24(%rsi)
+movq 96(%r8),%rax
+movq %rax,32(%rsi)
+
+mov %rbp,%rsp
+pop %r14
+pop %r13
+pop %rbp
 
 ret

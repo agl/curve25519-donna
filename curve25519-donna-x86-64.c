@@ -65,12 +65,16 @@ extern void fdifference_backwards(felem *output, const felem *input);
  *   xprime zprime: short form, destroyed
  *   qmqp: short form, preserved
  */
-static void
-fmonty(felem *x2, felem *z2,  /* output 2Q */
-       felem *x3, felem *z3,  /* output Q + Q' */
-       felem *x, felem *z,    /* input Q */
-       felem *xprime, felem *zprime,  /* input Q' */
+void
+fmonty(felem *x2,  /* output 2Q */
+       felem *x3,  /* output Q + Q' */
+       felem *x,    /* input Q */
+       felem *xprime,  /* input Q' */
        const felem *qmqp /* input Q - Q' */) {
+  felem *const z2 = &x2[8];
+  felem *const z3 = &x3[8];
+  felem *const z = &x[8];
+  felem *const zprime = &xprime[8];
   felem origx[5], origxprime[5], zzz[5], xx[5], zz[5], xxprime[5],
         zzprime[5], zzzprime[5];
 
@@ -98,61 +102,6 @@ fmonty(felem *x2, felem *z2,  /* output 2Q */
   freduce_coefficients(zzz);
   fsum(zzz, xx);
   fmul(z2, zz, zzz);
-}
-
-/* Calculates nQ where Q is the x-coordinate of a point on the curve
- *
- *   resultx/resultz: the x coordinate of the resulting curve point (short form)
- *   n: a little endian, 32-byte number
- *   q: a point of the curve (short form)
- */
-static void
-cmult(felem *resultx, felem *resultz, const u8 *n, const felem *q) {
-  felem a[5] = {0}, b[5] = {1}, c[5] = {1}, d[5] = {0};
-  felem *nqpqx = a, *nqpqz = b, *nqx = c, *nqz = d, *t;
-  felem e[5] = {0}, f[5] = {1}, g[5] = {0}, h[5] = {1};
-  felem *nqpqx2 = e, *nqpqz2 = f, *nqx2 = g, *nqz2 = h;
-
-  unsigned i, j;
-
-  memcpy(nqpqx, q, sizeof(felem) * 5);
-
-  for (i = 0; i < 32; ++i) {
-    u8 byte = n[31 - i];
-    for (j = 0; j < 8; ++j) {
-      if (byte & 0x80) {
-        fmonty(nqpqx2, nqpqz2,
-               nqx2, nqz2,
-               nqpqx, nqpqz,
-               nqx, nqz,
-               q);
-      } else {
-        fmonty(nqx2, nqz2,
-               nqpqx2, nqpqz2,
-               nqx, nqz,
-               nqpqx, nqpqz,
-               q);
-      }
-
-      t = nqx;
-      nqx = nqx2;
-      nqx2 = t;
-      t = nqz;
-      nqz = nqz2;
-      nqz2 = t;
-      t = nqpqx;
-      nqpqx = nqpqx2;
-      nqpqx2 = t;
-      t = nqpqz;
-      nqpqz = nqpqz2;
-      nqpqz2 = t;
-
-      byte <<= 1;
-    }
-  }
-
-  memcpy(resultx, nqx, sizeof(felem) * 5);
-  memcpy(resultz, nqz, sizeof(felem) * 5);
 }
 
 // -----------------------------------------------------------------------------
