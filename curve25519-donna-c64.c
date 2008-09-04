@@ -184,7 +184,47 @@ static void fmul(felem *output, const felem *in2, const felem *in) {
 
 static void
 fsquare(felem *output, const felem *in) {
-  fmul(output, in, in);
+  uint128_t t[9];
+
+  t[0] = ((uint128_t) in[0]) * in[0];
+  t[1] = ((uint128_t) in[0]) * in[1] * 2;
+  t[2] = ((uint128_t) in[0]) * in[2] * 2 +
+         ((uint128_t) in[1]) * in[1];
+  t[3] = ((uint128_t) in[0]) * in[3] * 2 +
+         ((uint128_t) in[1]) * in[2] * 2;
+  t[4] = ((uint128_t) in[0]) * in[4] * 2 +
+         ((uint128_t) in[3]) * in[1] * 2 +
+         ((uint128_t) in[2]) * in[2];
+  t[5] = ((uint128_t) in[4]) * in[1] * 2 +
+         ((uint128_t) in[2]) * in[3] * 2;
+  t[6] = ((uint128_t) in[4]) * in[2] * 2 +
+         ((uint128_t) in[3]) * in[3];
+  t[7] = ((uint128_t) in[3]) * in[4] * 2;
+  t[8] = ((uint128_t) in[4]) * in[4];
+
+  t[0] += t[5] * 19;
+  t[1] += t[6] * 19;
+  t[2] += t[7] * 19;
+  t[3] += t[8] * 19;
+
+  t[1] += t[0] >> 51;
+  t[0] &= 0x7ffffffffffff;
+  t[2] += t[1] >> 51;
+  t[1] &= 0x7ffffffffffff;
+  t[3] += t[2] >> 51;
+  t[2] &= 0x7ffffffffffff;
+  t[4] += t[3] >> 51;
+  t[3] &= 0x7ffffffffffff;
+  t[0] += 19 * (t[4] >> 51);
+  t[4] &= 0x7ffffffffffff;
+  t[1] += t[0] >> 51;
+  t[0] &= 0x7ffffffffffff;
+
+  output[0] = t[0];
+  output[1] = t[1];
+  output[2] = t[2];
+  output[3] = t[3];
+  output[4] = t[4];
 }
 
 /* Take a little-endian, 32-byte number and expand it into polynomial form */
