@@ -25,10 +25,10 @@
 #include <string.h>
 #include <stdint.h>
 
-#include <stdio.h>  // DEBUGGING ONLY
-
 typedef uint8_t u8;
 typedef uint64_t felem;
+// This is a special gcc mode for 128-bit integers. It's implemented on 64-bit
+// platforms only as far as I know.
 typedef unsigned uint128_t __attribute__((mode(TI)));
 
 /* Sum two numbers: output += in */
