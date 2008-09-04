@@ -34,8 +34,6 @@
 #include <string.h>
 #include <stdint.h>
 
-#include <stdio.h>  // DEBUGGING ONLY
-
 typedef uint8_t u8;
 typedef uint64_t felem;
 
@@ -68,7 +66,7 @@ extern void cmult(felem *x, felem *z, const u8 *n, const felem *q);
  *   xprime zprime: short form, destroyed
  *   qmqp: short form, preserved
  */
-void
+void __attribute__((visibility ("hidden")))
 fmonty(felem *x2,  /* output 2Q */
        felem *x3,  /* output Q + Q' */
        felem *x,    /* input Q */
