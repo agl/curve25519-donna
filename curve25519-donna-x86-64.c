@@ -34,6 +34,8 @@
 #include <string.h>
 #include <stdint.h>
 
+#include <stdio.h>  // DEBUGGING ONLY
+
 typedef uint8_t u8;
 typedef uint64_t felem;
 
@@ -175,7 +177,7 @@ crecip(felem *out, const felem *z) {
   /* 2^255 - 21 */ fmul(out,t1,z11);
 }
 
-void
+int
 curve25519_donna(u8 *mypublic, const u8 *secret, const u8 *basepoint) {
   felem bp[5], x[5], z[5], zmone[5];
   fexpand(bp, basepoint);
@@ -183,4 +185,5 @@ curve25519_donna(u8 *mypublic, const u8 *secret, const u8 *basepoint) {
   crecip(zmone, z);
   fmul(z, x, zmone);
   fcontract(mypublic, z);
+  return 0;
 }

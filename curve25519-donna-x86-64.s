@@ -569,8 +569,6 @@ mov 16(%rdi),%r10
 mov 24(%rdi),%r11
 mov 32(%rdi),%r12
 
-carrychain_:
-
 mov %r8,%rax
 shr $51,%rax
 add %rax,%r9

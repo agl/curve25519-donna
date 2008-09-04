@@ -560,7 +560,7 @@ crecip(felem *out, const felem *z) {
   /* 2^255 - 21 */ fmul(out,t1,z11);
 }
 
-void
+int
 curve25519_donna(u8 *mypublic, const u8 *secret, const u8 *basepoint) {
   felem bp[10], x[10], z[10], zmone[10];
   fexpand(bp, basepoint);
@@ -568,4 +568,5 @@ curve25519_donna(u8 *mypublic, const u8 *secret, const u8 *basepoint) {
   crecip(zmone, z);
   fmul(z, x, zmone);
   fcontract(mypublic, z);
+  return 0;
 }
