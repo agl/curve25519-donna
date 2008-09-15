@@ -267,6 +267,25 @@ fmonty(felem *x2, felem *z2, /* output 2Q */
   fmul(z2, zz, zzz);
 }
 
+// -----------------------------------------------------------------------------
+// Maybe swap the contents of two felem arrays (@a and @b), each @len elements
+// long. Perform the swap iff @swap is non-zero.
+//
+// This function performs the swap without leaking any side-channel
+// information.
+// -----------------------------------------------------------------------------
+static void
+swap_conditional(felem *a, felem *b, unsigned len, felem iswap) {
+  unsigned i;
+  const felem swap = -iswap;
+
+  for (i = 0; i < len; ++i) {
+    const felem x = swap & (a[i] ^ b[i]);
+    a[i] ^= x;
+    b[i] ^= x;
+  }
+}
+
 /* Calculates nQ where Q is the x-coordinate of a point on the curve
  *
  *   resultx/resultz: the x coordinate of the resulting curve point (short form)
@@ -287,19 +306,17 @@ cmult(felem *resultx, felem *resultz, const u8 *n, const felem *q) {
   for (i = 0; i < 32; ++i) {
     u8 byte = n[31 - i];
     for (j = 0; j < 8; ++j) {
-      if (byte & 0x80) {
-        fmonty(nqpqx2, nqpqz2,
-               nqx2, nqz2,
-               nqpqx, nqpqz,
-               nqx, nqz,
-               q);
-      } else {
-        fmonty(nqx2, nqz2,
-               nqpqx2, nqpqz2,
-               nqx, nqz,
-               nqpqx, nqpqz,
-               q);
-      }
+      const felem bit = byte >> 7;
+
+      swap_conditional(nqx, nqpqx, 5, bit);
+      swap_conditional(nqz, nqpqz, 5, bit);
+      fmonty(nqx2, nqz2,
+             nqpqx2, nqpqz2,
+             nqx, nqz,
+             nqpqx, nqpqz,
+             q);
+      swap_conditional(nqx2, nqpqx2, 5, bit);
+      swap_conditional(nqz2, nqpqz2, 5, bit);
 
       t = nqx;
       nqx = nqx2;
