@@ -72,10 +72,10 @@ fmonty(felem *x2,  /* output 2Q */
        felem *x,    /* input Q */
        felem *xprime,  /* input Q' */
        const felem *qmqp /* input Q - Q' */) {
-  felem *const z2 = &x2[8];
-  felem *const z3 = &x3[8];
-  felem *const z = &x[8];
-  felem *const zprime = &xprime[8];
+  felem *const z2 = &x2[5];
+  felem *const z3 = &x3[5];
+  felem *const z = &x[5];
+  felem *const zprime = &xprime[5];
   felem origx[5], origxprime[5], zzz[5], xx[5], zz[5], xxprime[5],
         zzprime[5], zzzprime[5];
 

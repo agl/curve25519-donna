@@ -757,7 +757,7 @@ and %r8,%rsp
 mov %rdx,%r13
 mov %rcx,%r14
 
-sub $512,%rsp
+sub $320,%rsp
 
 # value nQ+Q (x)
 movq (%rcx),%rax
@@ -772,25 +772,25 @@ movq 32(%rcx),%r11
 movq %r11,32(%rsp)
 
 # value nQ+Q (z)
-movq $1,64(%rsp)
+movq $1,40(%rsp)
+movq $0,48(%rsp)
+movq $0,56(%rsp)
+movq $0,64(%rsp)
 movq $0,72(%rsp)
-movq $0,80(%rsp)
-movq $0,88(%rsp)
-movq $0,96(%rsp)
 
 # value nQ (x)
-movq $1,128(%rsp)
+movq $1,80(%rsp)
+movq $0,88(%rsp)
+movq $0,96(%rsp)
+movq $0,104(%rsp)
+movq $0,112(%rsp)
+
+# value nQ (z)
+movq $0,120(%rsp)
+movq $0,128(%rsp)
 movq $0,136(%rsp)
 movq $0,144(%rsp)
 movq $0,152(%rsp)
-movq $0,160(%rsp)
-
-# value nQ (z)
-movq $0,192(%rsp)
-movq $0,200(%rsp)
-movq $0,208(%rsp)
-movq $0,216(%rsp)
-movq $0,224(%rsp)
 
 push %rbx
 push %r12
@@ -809,7 +809,7 @@ push %rsi
 # Based on the current MSB of the operand, we flip the two values over based
 # on an offset in %r8 for the first first member and %r9 for the second
 
-mov $256,%r12
+mov $160,%r12
 mov $32,%rbx
 
 cmult_loop_outer:
@@ -827,8 +827,6 @@ or $64,%rbx
 cmult_loop_inner:
 
 # Register allocation:
-#  r8: the element switch offset
-#  r9: complement r8
 #  r11: complement r12
 # Preserved by fmonty:
 #  rbx: loop counters
@@ -837,30 +835,89 @@ cmult_loop_inner:
 #  r14: (input) q
 #  r15: the current qword, getting left shifted
 
-mov $128,%r8
-xor %r9,%r9
-bt $63,%r15
-cmovc %r8,%r9
-mov %r9,%r8
-xor $128,%r8
+# We wish to test the MSB of the qword in r15. An arithmetic shift right of 63
+# places turns this either into all 1's (if MSB is set) or all zeros otherwise.
 
-shl $1,%r15
+mov %r15,%r8
+sar $63,%r8
+
+# Now replicate the mask to 128-bits in xmm0
+
+movq %r8,%xmm1
+movq %xmm1,%xmm0
+pslldq $8,%xmm0
+por %xmm1,%xmm0
+
+# Based on that mask, we swap the contents of several arrays in a side-channel
+# free manner.
+
+# Swap two xmm registers based on a mask in xmm0. Uses xmm11 as a temporary
+#define SWAPWITHMASK(a,b) \
+movdqa a,%xmm11 ; \
+pxor b,%xmm11 ; \
+pand %xmm0,%xmm11 ; \
+pxor %xmm11,a ; \
+pxor %xmm11,b
+
+# Swap the 80 byte arrays pointed to by %rdi based on the mask in
+# %xmm0
+#define ARRAYSWAP \
+movdqa (%rdi),%xmm1 ; \
+movdqa 80(%rdi),%xmm2 ; \
+movdqa 16(%rdi),%xmm3 ; \
+movdqa 96(%rdi),%xmm4 ; \
+movdqa 32(%rdi),%xmm5 ; \
+movdqa 112(%rdi),%xmm6 ; \
+movdqa 48(%rdi),%xmm7 ; \
+movdqa 128(%rdi),%xmm8 ; \
+movdqa 64(%rdi),%xmm9 ; \
+movdqa 144(%rdi),%xmm10 ; \
+\
+SWAPWITHMASK(%xmm1,%xmm2) ; \
+SWAPWITHMASK(%xmm3,%xmm4) ; \
+SWAPWITHMASK(%xmm5,%xmm6) ; \
+SWAPWITHMASK(%xmm7,%xmm8) ; \
+SWAPWITHMASK(%xmm9,%xmm10) ; \
+\
+movdqa %xmm1,(%rdi) ; \
+movdqa %xmm2,80(%rdi) ; \
+movdqa %xmm3,16(%rdi) ; \
+movdqa %xmm4,96(%rdi) ; \
+movdqa %xmm5,32(%rdi) ; \
+movdqa %xmm6,112(%rdi) ; \
+movdqa %xmm7,48(%rdi) ; \
+movdqa %xmm8,128(%rdi) ; \
+movdqa %xmm9,64(%rdi) ; \
+movdqa %xmm10,144(%rdi)
 
 mov %r12,%r11
-xor $256,%r11
+xor $160,%r11
 
+lea 40(%rsp,%r11),%rdi
+ARRAYSWAP
+
+mov %rdi,%rdx
 lea 40(%rsp,%r12),%rdi
 mov %rdi,%rsi
-lea 40(%rsp,%r11),%rdx
+add $80,%rdi
 mov %rdx,%rcx
-add %r8,%rdi
-add %r9,%rsi
-add %r8,%rdx
-add %r9,%rcx
+add $80,%rdx
 mov %r14,%r8
 call fmonty
 
-xor $256,%r12
+mov %r15,%r8
+sar $63,%r8
+movq %r8,%xmm1
+movq %xmm1,%xmm0
+pslldq $8,%xmm0
+por %xmm1,%xmm0
+
+lea 40(%rsp,%r12),%rdi
+ARRAYSWAP
+
+shl $1,%r15
+
+xor $160,%r12
 
 dec %rbx
 cmp $0,%ebx
@@ -876,7 +933,7 @@ pop %r15
 pop %r12
 pop %rbx
 
-lea 128(%rsp),%r8
+lea 80(%rsp),%r8
 
 movq (%r8),%rax
 movq %rax,(%rdi)
@@ -889,15 +946,15 @@ movq %rax,24(%rdi)
 movq 32(%r8),%rax
 movq %rax,32(%rdi)
 
-movq 64(%r8),%rax
+movq 40(%r8),%rax
 movq %rax,(%rsi)
-movq 72(%r8),%rax
+movq 48(%r8),%rax
 movq %rax,8(%rsi)
-movq 80(%r8),%rax
+movq 56(%r8),%rax
 movq %rax,16(%rsi)
-movq 88(%r8),%rax
+movq 64(%r8),%rax
 movq %rax,24(%rsi)
-movq 96(%r8),%rax
+movq 72(%r8),%rax
 movq %rax,32(%rsi)
 
 mov %rbp,%rsp
