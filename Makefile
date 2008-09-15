@@ -1,6 +1,6 @@
 targets: curve25519-donna.a curve25519-donna-x86-64.a curve25519-donna-c64.a
 
-test: test-donna test-donna-x86-64
+test: test-donna test-donna-x86-64 test-donna-c64
 
 clean:
 	rm -f *.o *.a *.pp test-curve25519-donna test-curve25519-donna-x86-64 speed-curve25519-donna speed-curve25519-donna-x86-64 test-sc-curve25519-donna-x86-64
