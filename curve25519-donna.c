@@ -563,8 +563,16 @@ crecip(felem *out, const felem *z) {
 int
 curve25519_donna(u8 *mypublic, const u8 *secret, const u8 *basepoint) {
   felem bp[10], x[10], z[10], zmone[10];
+  uint8_t e[32];
+  int i;
+
+  for (i = 0; i < 32; ++i) e[i] = secret[i];
+  e[0] &= 248;
+  e[31] &= 127;
+  e[31] |= 64;
+
   fexpand(bp, basepoint);
-  cmult(x, z, secret, bp);
+  cmult(x, z, e, bp);
   crecip(zmone, z);
   fmul(z, x, zmone);
   fcontract(mypublic, z);
