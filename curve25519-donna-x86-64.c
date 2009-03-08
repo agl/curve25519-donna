@@ -37,6 +37,10 @@
 typedef uint8_t u8;
 typedef uint64_t felem;
 
+// This is a special gcc mode for 128-bit integers. It's implemented on 64-bit
+// platforms only as far as I know.
+typedef unsigned uint128_t __attribute__((mode(TI)));
+
 /* Sum two numbers: output += in */
 static void
 fsum(felem *output, const felem *in) {
@@ -51,7 +55,6 @@ fsum(felem *output, const felem *in) {
 extern void fmul(felem *output, const felem *in1, const felem *in2);
 extern void fsquare(felem *output, const felem *in1);
 extern void fexpand(felem *ouptut, const u8 *input);
-extern void fcontract(u8 *output, const felem *input);
 extern void freduce_coefficients(felem *inout);
 extern void fscalar(felem *output, const felem *input);
 extern void fdifference_backwards(felem *output, const felem *input);
@@ -103,6 +106,64 @@ fmonty(felem *x2,  /* output 2Q */
   freduce_coefficients(zzz);
   fsum(zzz, xx);
   fmul(z2, zz, zzz);
+}
+
+/* Take a fully reduced polynomial form number and contract it into a
+ * little-endian, 32-byte array
+ */
+static void
+fcontract(u8 *output, const felem *input) {
+  uint128_t t[5];
+
+  t[0] = input[0];
+  t[1] = input[1];
+  t[2] = input[2];
+  t[3] = input[3];
+  t[4] = input[4];
+
+  t[1] += t[0] >> 51; t[0] &= 0x7ffffffffffff;
+  t[2] += t[1] >> 51; t[1] &= 0x7ffffffffffff;
+  t[3] += t[2] >> 51; t[2] &= 0x7ffffffffffff;
+  t[4] += t[3] >> 51; t[3] &= 0x7ffffffffffff;
+  t[0] += 19 * (t[4] >> 51); t[4] &= 0x7ffffffffffff;
+
+  t[1] += t[0] >> 51; t[0] &= 0x7ffffffffffff;
+  t[2] += t[1] >> 51; t[1] &= 0x7ffffffffffff;
+  t[3] += t[2] >> 51; t[2] &= 0x7ffffffffffff;
+  t[4] += t[3] >> 51; t[3] &= 0x7ffffffffffff;
+  t[0] += 19 * (t[4] >> 51); t[4] &= 0x7ffffffffffff;
+
+  /* now t is between 0 and 2^255-1, properly carried. */
+  /* case 1: between 0 and 2^255-20. case 2: between 2^255-19 and 2^255-1. */
+
+  t[0] += 19;
+
+  t[1] += t[0] >> 51; t[0] &= 0x7ffffffffffff;
+  t[2] += t[1] >> 51; t[1] &= 0x7ffffffffffff;
+  t[3] += t[2] >> 51; t[2] &= 0x7ffffffffffff;
+  t[4] += t[3] >> 51; t[3] &= 0x7ffffffffffff;
+  t[0] += 19 * (t[4] >> 51); t[4] &= 0x7ffffffffffff;
+
+  /* now between 19 and 2^255-1 in both cases, and offset by 19. */
+
+  t[0] += 0x8000000000000 - 19;
+  t[1] += 0x8000000000000 - 1;
+  t[2] += 0x8000000000000 - 1;
+  t[3] += 0x8000000000000 - 1;
+  t[4] += 0x8000000000000 - 1;
+
+  /* now between 2^255 and 2^256-20, and offset by 2^255. */
+
+  t[1] += t[0] >> 51; t[0] &= 0x7ffffffffffff;
+  t[2] += t[1] >> 51; t[1] &= 0x7ffffffffffff;
+  t[3] += t[2] >> 51; t[2] &= 0x7ffffffffffff;
+  t[4] += t[3] >> 51; t[3] &= 0x7ffffffffffff;
+  t[4] &= 0x7ffffffffffff;
+
+  *((uint64_t *)(output)) = t[0] | (t[1] << 51);
+  *((uint64_t *)(output+8)) = (t[1] >> 13) | (t[2] << 38);
+  *((uint64_t *)(output+16)) = (t[2] >> 26) | (t[3] << 25);
+  *((uint64_t *)(output+24)) = (t[3] >> 39) | (t[4] << 12);
 }
 
 // -----------------------------------------------------------------------------

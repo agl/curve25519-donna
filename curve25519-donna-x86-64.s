@@ -21,7 +21,6 @@
 .globl fmul
 .globl fsquare
 .globl fexpand
-.globl fcontract
 .globl freduce_coefficients
 .globl fscalar
 .globl fdifference_backwards
@@ -637,44 +636,6 @@ mov 25(%rsi),%rax
 shr $4,%rax
 and %rdx,%rax
 mov %rax,32(%rdi)
-
-ret
-
-################################################################################
-# fcontract - convert 5 uint64_t's to a packed (32 byte) representation
-#
-# Registers: RDI: (output) pointer to uint8_t[32]
-#            RSI: (input) pointer to uint64_t[5]
-################################################################################
-fcontract:
-
-mov (%rsi),%rax
-mov 8(%rsi),%rdx
-mov 16(%rsi),%r8
-mov 24(%rsi),%r9
-mov 32(%rsi),%r10
-
-mov %rdx,%rcx
-shl $51,%rcx
-or %rcx,%rax
-mov %rax,(%rdi)
-
-shr $13,%rdx
-mov %r8,%rcx
-shl $38,%rcx
-or %rcx,%rdx
-mov %rdx,8(%rdi)
-
-shr $26,%r8
-mov %r9,%rcx
-shl $25,%rcx
-or %rcx,%r8
-mov %r8,16(%rdi)
-
-shr $39,%r9
-shl $12,%r10
-or %r10,%r9
-mov %r9,24(%rdi)
 
 ret
 
