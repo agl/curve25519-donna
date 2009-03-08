@@ -218,10 +218,57 @@ fexpand(felem *output, const u8 *in) {
  */
 static void
 fcontract(u8 *output, const felem *input) {
-  *((uint64_t *)(output)) = input[0] | (input[1] << 51);
-  *((uint64_t *)(output+8)) = (input[1] >> 13) | (input[2] << 38);
-  *((uint64_t *)(output+16)) = (input[2] >> 26) | (input[3] << 25);
-  *((uint64_t *)(output+24)) = (input[3] >> 39) | (input[4] << 12);
+  uint128_t t[5];
+
+  t[0] = input[0];
+  t[1] = input[1];
+  t[2] = input[2];
+  t[3] = input[3];
+  t[4] = input[4];
+
+  t[1] += t[0] >> 51; t[0] &= 0x7ffffffffffff;
+  t[2] += t[1] >> 51; t[1] &= 0x7ffffffffffff;
+  t[3] += t[2] >> 51; t[2] &= 0x7ffffffffffff;
+  t[4] += t[3] >> 51; t[3] &= 0x7ffffffffffff;
+  t[0] += 19 * (t[4] >> 51); t[4] &= 0x7ffffffffffff;
+
+  t[1] += t[0] >> 51; t[0] &= 0x7ffffffffffff;
+  t[2] += t[1] >> 51; t[1] &= 0x7ffffffffffff;
+  t[3] += t[2] >> 51; t[2] &= 0x7ffffffffffff;
+  t[4] += t[3] >> 51; t[3] &= 0x7ffffffffffff;
+  t[0] += 19 * (t[4] >> 51); t[4] &= 0x7ffffffffffff;
+
+  /* now t is between 0 and 2^255-1, properly carried. */
+  /* case 1: between 0 and 2^255-20. case 2: between 2^255-19 and 2^255-1. */
+
+  t[0] += 19;
+
+  t[1] += t[0] >> 51; t[0] &= 0x7ffffffffffff;
+  t[2] += t[1] >> 51; t[1] &= 0x7ffffffffffff;
+  t[3] += t[2] >> 51; t[2] &= 0x7ffffffffffff;
+  t[4] += t[3] >> 51; t[3] &= 0x7ffffffffffff;
+  t[0] += 19 * (t[4] >> 51); t[4] &= 0x7ffffffffffff;
+
+  /* now between 19 and 2^255-1 in both cases, and offset by 19. */
+
+  t[0] += 0x8000000000000 - 19;
+  t[1] += 0x8000000000000 - 1;
+  t[2] += 0x8000000000000 - 1;
+  t[3] += 0x8000000000000 - 1;
+  t[4] += 0x8000000000000 - 1;
+
+  /* now between 2^255 and 2^256-20, and offset by 2^255. */
+
+  t[1] += t[0] >> 51; t[0] &= 0x7ffffffffffff;
+  t[2] += t[1] >> 51; t[1] &= 0x7ffffffffffff;
+  t[3] += t[2] >> 51; t[2] &= 0x7ffffffffffff;
+  t[4] += t[3] >> 51; t[3] &= 0x7ffffffffffff;
+  t[4] &= 0x7ffffffffffff;
+
+  *((uint64_t *)(output)) = t[0] | (t[1] << 51);
+  *((uint64_t *)(output+8)) = (t[1] >> 13) | (t[2] << 38);
+  *((uint64_t *)(output+16)) = (t[2] >> 26) | (t[3] << 25);
+  *((uint64_t *)(output+24)) = (t[3] >> 39) | (t[4] << 12);
 }
 
 /* Input: Q, Q', Q-Q'
