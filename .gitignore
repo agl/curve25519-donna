@@ -1,3 +1,4 @@
 /curve25519-donna-c64.a
 /curve25519-donna.a
 /test-curve25519-donna
+/python/build
