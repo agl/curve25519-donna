@@ -25,204 +25,219 @@
 #include <string.h>
 #include <stdint.h>
 
+#define DONNA_INLINE
+#if defined(DONNA_INLINE)
+	#undef DONNA_INLINE
+	#define DONNA_INLINE __attribute__((always_inline))
+#else
+	#define DONNA_INLINE
+#endif
+
 typedef uint8_t u8;
 typedef uint64_t felem;
+typedef int64_t felemsigned;
+typedef felem bignum[5];
 // This is a special gcc mode for 128-bit integers. It's implemented on 64-bit
 // platforms only as far as I know.
 typedef unsigned uint128_t __attribute__((mode(TI)));
+typedef uint128_t felemx2;
+
 
 /* Sum two numbers: output += in */
-static void fsum(felem *output, const felem *in) {
-  unsigned i;
-  for (i = 0; i < 5; ++i) output[i] += in[i];
+static void DONNA_INLINE
+fsum(bignum output, const bignum in) {
+  output[0] += in[0];
+  output[1] += in[1];
+  output[2] += in[2];
+  output[3] += in[3];
+  output[4] += in[4];
 }
 
 /* Find the difference of two numbers: output = in - output
  * (note the order of the arguments!)
  */
-static void fdifference_backwards(felem *ioutput, const felem *iin) {
-  static const int64_t twotothe51 = (1l << 51);
-  const int64_t *in = (const int64_t *) iin;
-  int64_t *out = (int64_t *) ioutput;
-
-  out[0] = in[0] - out[0];
-  out[1] = in[1] - out[1];
-  out[2] = in[2] - out[2];
-  out[3] = in[3] - out[3];
-  out[4] = in[4] - out[4];
+static void DONNA_INLINE
+fdifference_backwards(bignum output, const bignum in) {
+  static const felemsigned twotothe51 = (1ll << 51);
+  felemsigned r0,r1,r2,r3,r4;
 
   // An arithmetic shift right of 63 places turns a positive number to 0 and a
   // negative number to all 1's. This gives us a bitmask that lets us avoid
   // side-channel prone branches.
-  int64_t t;
+  felemsigned t;
 
-#define NEGCHAIN(a,b) \
-  t = out[a] >> 63; \
-  out[a] += twotothe51 & t; \
-  out[b] -= 1 & t;
+  r0 = (felemsigned)in[0] - (felemsigned)output[0];
+  r1 = (felemsigned)in[1] - (felemsigned)output[1];
+  r2 = (felemsigned)in[2] - (felemsigned)output[2];
+  r3 = (felemsigned)in[3] - (felemsigned)output[3];
+  r4 = (felemsigned)in[4] - (felemsigned)output[4];
 
-#define NEGCHAIN19(a,b) \
-  t = out[a] >> 63; \
-  out[a] += twotothe51 & t; \
-  out[b] -= 19 & t;
+  #define negchain(a,b) \
+    t = r##a >> 63; \
+    r##b -= (felem)t >> 63; \
+    r##a += twotothe51 & t;
 
-  NEGCHAIN(0, 1);
-  NEGCHAIN(1, 2);
-  NEGCHAIN(2, 3);
-  NEGCHAIN(3, 4);
-  NEGCHAIN19(4, 0);
-  NEGCHAIN(0, 1);
-  NEGCHAIN(1, 2);
-  NEGCHAIN(2, 3);
-  NEGCHAIN(3, 4);
+  #define negchain19(a,b) \
+    t = r##a >> 63; \
+    r##b -= 19 & t; \
+    r##a += twotothe51 & t;
+
+  negchain(0, 1);
+  negchain(1, 2);
+  negchain(2, 3);
+  negchain(3, 4);
+  negchain19(4, 0);
+  negchain(0, 1);
+  negchain(1, 2);
+  negchain(2, 3);
+  negchain(3, 4);
+
+  output[0] = r0;
+  output[1] = r1;
+  output[2] = r2;
+  output[3] = r3;
+  output[4] = r4;
 }
 
-/* Multiply a number by a scalar: output = in * scalar */
-static void fscalar_product(felem *output, const felem *in, const felem scalar) {
-  uint128_t a;
+/* Multiply a number by a scalar and add: output = (in * scalar) + add */
+static void DONNA_INLINE
+fscalar_product_sum(bignum output, const bignum in, const felem scalar, const bignum add) {
+  felemx2 a;
+  felem r0,r1,r2,r3,r4,c;
 
-  a = ((uint128_t) in[0]) * scalar;
-  output[0] = a & 0x7ffffffffffff;
-
-  a = ((uint128_t) in[1]) * scalar + (a >> 51);
-  output[1] = a & 0x7ffffffffffff;
-
-  a = ((uint128_t) in[2]) * scalar + (a >> 51);
-  output[2] = a & 0x7ffffffffffff;
-
-  a = ((uint128_t) in[3]) * scalar + (a >> 51);
-  output[3] = a & 0x7ffffffffffff;
-
-  a = ((uint128_t) in[4]) * scalar + (a >> 51);
-  output[4] = a & 0x7ffffffffffff;
-
-  output[0] += (a >> 51) * 19;
+  a = ((felemx2) in[0]) * scalar;     r0 = (felem)a & 0x7ffffffffffff; c = (felem)(a >> 51);
+  a = ((felemx2) in[1]) * scalar + c; r1 = (felem)a & 0x7ffffffffffff; c = (felem)(a >> 51);
+  a = ((felemx2) in[2]) * scalar + c; r2 = (felem)a & 0x7ffffffffffff; c = (felem)(a >> 51);
+  a = ((felemx2) in[3]) * scalar + c; r3 = (felem)a & 0x7ffffffffffff; c = (felem)(a >> 51);
+  a = ((felemx2) in[4]) * scalar + c; r4 = (felem)a & 0x7ffffffffffff; c = (felem)(a >> 51);
+                                      r0 += c * 19;
+  output[0] = r0 + add[0];
+  output[1] = r1 + add[1];
+  output[2] = r2 + add[2];
+  output[3] = r3 + add[3];
+  output[4] = r4 + add[4];
 }
 
 /* Multiply two numbers: output = in2 * in
  *
- * output must be distinct to both inputs. The inputs are reduced coefficient
- * form, the output is not.
+ * The inputs are reduced coefficient form, the output is not.
  */
-static void fmul(felem *output, const felem *in2, const felem *in) {
-  uint128_t t[9];
+static void DONNA_INLINE
+fmul(bignum output, const bignum in2, const bignum in) {
+  felemx2 t[5];
+  felem r0,r1,r2,r3,r4,s0,s1,s2,s3,s4,c;
 
-  t[0] = ((uint128_t) in[0]) * in2[0];
-  t[1] = ((uint128_t) in[0]) * in2[1] +
-         ((uint128_t) in[1]) * in2[0];
-  t[2] = ((uint128_t) in[0]) * in2[2] +
-         ((uint128_t) in[2]) * in2[0] +
-         ((uint128_t) in[1]) * in2[1];
-  t[3] = ((uint128_t) in[0]) * in2[3] +
-         ((uint128_t) in[3]) * in2[0] +
-         ((uint128_t) in[1]) * in2[2] +
-         ((uint128_t) in[2]) * in2[1];
-  t[4] = ((uint128_t) in[0]) * in2[4] +
-         ((uint128_t) in[4]) * in2[0] +
-         ((uint128_t) in[3]) * in2[1] +
-         ((uint128_t) in[1]) * in2[3] +
-         ((uint128_t) in[2]) * in2[2];
-  t[5] = ((uint128_t) in[4]) * in2[1] +
-         ((uint128_t) in[1]) * in2[4] +
-         ((uint128_t) in[2]) * in2[3] +
-         ((uint128_t) in[3]) * in2[2];
-  t[6] = ((uint128_t) in[4]) * in2[2] +
-         ((uint128_t) in[2]) * in2[4] +
-         ((uint128_t) in[3]) * in2[3];
-  t[7] = ((uint128_t) in[3]) * in2[4] +
-         ((uint128_t) in[4]) * in2[3];
-  t[8] = ((uint128_t) in[4]) * in2[4];
+  r0 = in[0];
+  r1 = in[1];
+  r2 = in[2];
+  r3 = in[3];
+  r4 = in[4];
 
-  t[0] += t[5] * 19;
-  t[1] += t[6] * 19;
-  t[2] += t[7] * 19;
-  t[3] += t[8] * 19;
+  s0 = in2[0];
+  s1 = in2[1];
+  s2 = in2[2];
+  s3 = in2[3];
+  s4 = in2[4];
 
-  t[1] += t[0] >> 51;
-  t[0] &= 0x7ffffffffffff;
-  t[2] += t[1] >> 51;
-  t[1] &= 0x7ffffffffffff;
-  t[3] += t[2] >> 51;
-  t[2] &= 0x7ffffffffffff;
-  t[4] += t[3] >> 51;
-  t[3] &= 0x7ffffffffffff;
-  t[0] += 19 * (t[4] >> 51);
-  t[4] &= 0x7ffffffffffff;
-  t[1] += t[0] >> 51;
-  t[0] &= 0x7ffffffffffff;
-  t[2] += t[1] >> 51;
-  t[1] &= 0x7ffffffffffff;
+  t[0]  =  ((felemx2) r0) * s0;
+  t[1]  =  ((felemx2) r0) * s1 + ((felemx2) r1) * s0;
+  t[2]  =  ((felemx2) r0) * s2 + ((felemx2) r2) * s0 + ((felemx2) r1) * s1;
+  t[3]  =  ((felemx2) r0) * s3 + ((felemx2) r3) * s0 + ((felemx2) r1) * s2 + ((felemx2) r2) * s1;
+  t[4]  =  ((felemx2) r0) * s4 + ((felemx2) r4) * s0 + ((felemx2) r3) * s1 + ((felemx2) r1) * s3 + ((felemx2) r2) * s2;
 
-  output[0] = t[0];
-  output[1] = t[1];
-  output[2] = t[2];
-  output[3] = t[3];
-  output[4] = t[4];
+  r4 *= 19;
+  r1 *= 19;
+  r2 *= 19;
+  r3 *= 19;
+
+  t[0] += ((felemx2) r4) * s1 + ((felemx2) r1) * s4 + ((felemx2) r2) * s3 + ((felemx2) r3) * s2;
+  t[1] += ((felemx2) r4) * s2 + ((felemx2) r2) * s4 + ((felemx2) r3) * s3;
+  t[2] += ((felemx2) r4) * s3 + ((felemx2) r3) * s4;
+  t[3] += ((felemx2) r4) * s4;
+
+                  r0 = (felem)t[0] & 0x7ffffffffffff; c = (felem)(t[0] >> 51);
+  t[1] += c;      r1 = (felem)t[1] & 0x7ffffffffffff; c = (felem)(t[1] >> 51);
+  t[2] += c;      r2 = (felem)t[2] & 0x7ffffffffffff; c = (felem)(t[2] >> 51);
+  t[3] += c;      r3 = (felem)t[3] & 0x7ffffffffffff; c = (felem)(t[3] >> 51);
+  t[4] += c;      r4 = (felem)t[4] & 0x7ffffffffffff; c = (felem)(t[4] >> 51);
+  r0 +=   c * 19; c = r0 >> 51; r0 = r0 & 0x7ffffffffffff;
+  r1 +=   c;      c = r1 >> 51; r1 = r1 & 0x7ffffffffffff;
+  r2 +=   c;
+
+  output[0] = r0;
+  output[1] = r1;
+  output[2] = r2;
+  output[3] = r3;
+  output[4] = r4;
 }
 
-static void
-fsquare(felem *output, const felem *in) {
-  uint128_t t[9];
+static void DONNA_INLINE
+fsquare_times(bignum output, const bignum in, felem count) {
+  felemx2 t[5];
+  felem r0,r1,r2,r3,r4,c;
+  felem d0,d1,d2,d4,d419;
 
-  t[0] = ((uint128_t) in[0]) * in[0];
-  t[1] = ((uint128_t) in[0]) * in[1] * 2;
-  t[2] = ((uint128_t) in[0]) * in[2] * 2 +
-         ((uint128_t) in[1]) * in[1];
-  t[3] = ((uint128_t) in[0]) * in[3] * 2 +
-         ((uint128_t) in[1]) * in[2] * 2;
-  t[4] = ((uint128_t) in[0]) * in[4] * 2 +
-         ((uint128_t) in[3]) * in[1] * 2 +
-         ((uint128_t) in[2]) * in[2];
-  t[5] = ((uint128_t) in[4]) * in[1] * 2 +
-         ((uint128_t) in[2]) * in[3] * 2;
-  t[6] = ((uint128_t) in[4]) * in[2] * 2 +
-         ((uint128_t) in[3]) * in[3];
-  t[7] = ((uint128_t) in[3]) * in[4] * 2;
-  t[8] = ((uint128_t) in[4]) * in[4];
+  r0 = in[0];
+  r1 = in[1];
+  r2 = in[2];
+  r3 = in[3];
+  r4 = in[4];
 
-  t[0] += t[5] * 19;
-  t[1] += t[6] * 19;
-  t[2] += t[7] * 19;
-  t[3] += t[8] * 19;
+  do {
+    d0 = r0 * 2;
+    d1 = r1 * 2;
+    d2 = r2 * 2 * 19;
+    d419 = r4 * 19;
+    d4 = d419 * 2;
 
-  t[1] += t[0] >> 51;
-  t[0] &= 0x7ffffffffffff;
-  t[2] += t[1] >> 51;
-  t[1] &= 0x7ffffffffffff;
-  t[3] += t[2] >> 51;
-  t[2] &= 0x7ffffffffffff;
-  t[4] += t[3] >> 51;
-  t[3] &= 0x7ffffffffffff;
-  t[0] += 19 * (t[4] >> 51);
-  t[4] &= 0x7ffffffffffff;
-  t[1] += t[0] >> 51;
-  t[0] &= 0x7ffffffffffff;
-  t[2] += t[1] >> 51;
-  t[1] &= 0x7ffffffffffff;
+	t[0] = ((felemx2) r0) * r0 + ((felemx2) d4) * r1 + (((felemx2) d2) * (r3     ));
+	t[1] = ((felemx2) d0) * r1 + ((felemx2) d4) * r2 + (((felemx2) r3) * (r3 * 19));
+	t[2] = ((felemx2) d0) * r2 + ((felemx2) r1) * r1 + (((felemx2) d4) * (r3     ));
+	t[3] = ((felemx2) d0) * r3 + ((felemx2) d1) * r2 + (((felemx2) r4) * (d419   ));
+    t[4] = ((felemx2) d0) * r4 + ((felemx2) d1) * r3 + (((felemx2) r2) * (r2     ));
 
-  output[0] = t[0];
-  output[1] = t[1];
-  output[2] = t[2];
-  output[3] = t[3];
-  output[4] = t[4];
+                    r0 = (felem)t[0] & 0x7ffffffffffff; c = (felem)(t[0] >> 51);
+    t[1] += c;      r1 = (felem)t[1] & 0x7ffffffffffff; c = (felem)(t[1] >> 51);
+    t[2] += c;      r2 = (felem)t[2] & 0x7ffffffffffff; c = (felem)(t[2] >> 51);
+    t[3] += c;      r3 = (felem)t[3] & 0x7ffffffffffff; c = (felem)(t[3] >> 51);
+    t[4] += c;      r4 = (felem)t[4] & 0x7ffffffffffff; c = (felem)(t[4] >> 51);
+    r0 +=   c * 19; c = r0 >> 51; r0 = r0 & 0x7ffffffffffff;
+    r1 +=   c;      c = r1 >> 51; r1 = r1 & 0x7ffffffffffff;
+    r2 +=   c;
+  } while(--count);
+
+  output[0] = r0;
+  output[1] = r1;
+  output[2] = r2;
+  output[3] = r3;
+  output[4] = r4;
 }
 
 /* Take a little-endian, 32-byte number and expand it into polynomial form */
-static void
-fexpand(felem *output, const u8 *in) {
-  output[0] = *((const uint64_t *)(in)) & 0x7ffffffffffff;
-  output[1] = (*((const uint64_t *)(in+6)) >> 3) & 0x7ffffffffffff;
-  output[2] = (*((const uint64_t *)(in+12)) >> 6) & 0x7ffffffffffff;
-  output[3] = (*((const uint64_t *)(in+19)) >> 1) & 0x7ffffffffffff;
-  output[4] = (*((const uint64_t *)(in+25)) >> 4) & 0x7ffffffffffff;
+static void DONNA_INLINE
+fexpand(bignum output, const u8 *in) {
+  felem t, i;
+
+  #define read51full(n,start,shift) \
+    for (t = in[(start)] >> (shift), i = 0; i < (6 + ((shift)/6)); i++) \
+      t |= ((felem)in[i+(start)+1] << ((i * 8) + (8 - (shift)))); \
+    output[n] = t & 0x7ffffffffffff;
+  #define read51(n) read51full(n,(n*51)/8,(n*3)&7)
+
+  read51(0)
+  read51(1)
+  read51(2)
+  read51(3)
+  read51(4)
 }
 
 /* Take a fully reduced polynomial form number and contract it into a
  * little-endian, 32-byte array
  */
-static void
-fcontract(u8 *output, const felem *input) {
-  uint128_t t[5];
+static void DONNA_INLINE
+fcontract(u8 *output, const bignum input) {
+  felemx2 t[5];
+  felem f, i;
 
   t[0] = input[0];
   t[1] = input[1];
@@ -230,31 +245,27 @@ fcontract(u8 *output, const felem *input) {
   t[3] = input[3];
   t[4] = input[4];
 
-  t[1] += t[0] >> 51; t[0] &= 0x7ffffffffffff;
-  t[2] += t[1] >> 51; t[1] &= 0x7ffffffffffff;
-  t[3] += t[2] >> 51; t[2] &= 0x7ffffffffffff;
-  t[4] += t[3] >> 51; t[3] &= 0x7ffffffffffff;
-  t[0] += 19 * (t[4] >> 51); t[4] &= 0x7ffffffffffff;
+  #define fcontract_carry() \
+    t[1] += t[0] >> 51; t[0] &= 0x7ffffffffffff; \
+    t[2] += t[1] >> 51; t[1] &= 0x7ffffffffffff; \
+    t[3] += t[2] >> 51; t[2] &= 0x7ffffffffffff; \
+    t[4] += t[3] >> 51; t[3] &= 0x7ffffffffffff;
 
-  t[1] += t[0] >> 51; t[0] &= 0x7ffffffffffff;
-  t[2] += t[1] >> 51; t[1] &= 0x7ffffffffffff;
-  t[3] += t[2] >> 51; t[2] &= 0x7ffffffffffff;
-  t[4] += t[3] >> 51; t[3] &= 0x7ffffffffffff;
-  t[0] += 19 * (t[4] >> 51); t[4] &= 0x7ffffffffffff;
+  #define fcontract_carry_full() fcontract_carry() \
+    t[0] += 19 * (t[4] >> 51); t[4] &= 0x7ffffffffffff;
+
+  #define fcontract_carry_final() fcontract_carry() \
+    t[4] &= 0x7ffffffffffff;
+
+  fcontract_carry_full()
+  fcontract_carry_full()
 
   /* now t is between 0 and 2^255-1, properly carried. */
   /* case 1: between 0 and 2^255-20. case 2: between 2^255-19 and 2^255-1. */
-
   t[0] += 19;
-
-  t[1] += t[0] >> 51; t[0] &= 0x7ffffffffffff;
-  t[2] += t[1] >> 51; t[1] &= 0x7ffffffffffff;
-  t[3] += t[2] >> 51; t[2] &= 0x7ffffffffffff;
-  t[4] += t[3] >> 51; t[3] &= 0x7ffffffffffff;
-  t[0] += 19 * (t[4] >> 51); t[4] &= 0x7ffffffffffff;
+  fcontract_carry_full()
 
   /* now between 19 and 2^255-1 in both cases, and offset by 19. */
-
   t[0] += 0x8000000000000 - 19;
   t[1] += 0x8000000000000 - 1;
   t[2] += 0x8000000000000 - 1;
@@ -262,219 +273,142 @@ fcontract(u8 *output, const felem *input) {
   t[4] += 0x8000000000000 - 1;
 
   /* now between 2^255 and 2^256-20, and offset by 2^255. */
+  fcontract_carry_final()
 
-  t[1] += t[0] >> 51; t[0] &= 0x7ffffffffffff;
-  t[2] += t[1] >> 51; t[1] &= 0x7ffffffffffff;
-  t[3] += t[2] >> 51; t[2] &= 0x7ffffffffffff;
-  t[4] += t[3] >> 51; t[3] &= 0x7ffffffffffff;
-  t[4] &= 0x7ffffffffffff;
-
-  *((uint64_t *)(output)) = t[0] | (t[1] << 51);
-  *((uint64_t *)(output+8)) = (t[1] >> 13) | (t[2] << 38);
-  *((uint64_t *)(output+16)) = (t[2] >> 26) | (t[3] << 25);
-  *((uint64_t *)(output+24)) = (t[3] >> 39) | (t[4] << 12);
+  #define write51full(n,shift) \
+    f = ((t[n] >> shift) | (t[n+1] << (51 - shift))); \
+    for (i = 0; i < 8; i++, f >>= 8) *output++ = (u8)f;
+  #define write51(n) write51full(n,13*n)
+  write51(0)
+  write51(1)
+  write51(2)
+  write51(3)
 }
 
-/* Input: Q, Q', Q-Q'
- * Output: 2Q, Q+Q'
- *
- *   x2 z3: long form
- *   x3 z3: long form
- *   x z: short form, destroyed
- *   xprime zprime: short form, destroyed
- *   qmqp: short form, preserved
- */
-static void
-fmonty(felem *x2, felem *z2, /* output 2Q */
-       felem *x3, felem *z3, /* output Q + Q' */
-       felem *x, felem *z,   /* input Q */
-       felem *xprime, felem *zprime, /* input Q' */
-       const felem *qmqp /* input Q - Q' */) {
-  felem origx[5], origxprime[5], zzz[5], xx[5], zz[5], xxprime[5],
-        zzprime[5], zzzprime[5];
-
-  memcpy(origx, x, 5 * sizeof(felem));
-  fsum(x, z);
-  fdifference_backwards(z, origx);  // does x - z
-
-  memcpy(origxprime, xprime, sizeof(felem) * 5);
-  fsum(xprime, zprime);
-  fdifference_backwards(zprime, origxprime);
-  fmul(xxprime, xprime, z);
-  fmul(zzprime, x, zprime);
-  memcpy(origxprime, xxprime, sizeof(felem) * 5);
-  fsum(xxprime, zzprime);
-  fdifference_backwards(zzprime, origxprime);
-  fsquare(x3, xxprime);
-  fsquare(zzzprime, zzprime);
-  fmul(z3, zzzprime, qmqp);
-
-  fsquare(xx, x);
-  fsquare(zz, z);
-  fmul(x2, xx, zz);
-  fdifference_backwards(zz, xx);  // does zz = xx - zz
-  fscalar_product(zzz, zz, 121665);
-  fsum(zzz, xx);
-  fmul(z2, zz, zzz);
+static void DONNA_INLINE
+fcopy(bignum out, const bignum in) {
+  out[0] = in[0];
+  out[1] = in[1];
+  out[2] = in[2];
+  out[3] = in[3];
+  out[4] = in[4];
 }
 
 // -----------------------------------------------------------------------------
-// Maybe swap the contents of two felem arrays (@a and @b), each @len elements
+// Shamelessly copied from djb's code, tightened a little
+// -----------------------------------------------------------------------------
+static void
+crecip(bignum out, const bignum z) {
+  bignum a,t0,b,c;
+
+  /* 2 */ fsquare_times(a, z, 1); // a = 2
+  /* 8 */ fsquare_times(t0, a, 2);
+  /* 9 */ fmul(b, t0, z); // b = 9
+  /* 11 */ fmul(a, b, a); // a = 11
+  /* 22 */ fsquare_times(t0, a, 1);
+  /* 2^5 - 2^0 = 31 */ fmul(b, t0, b);
+  /* 2^10 - 2^5 */ fsquare_times(t0, b, 5);
+  /* 2^10 - 2^0 */ fmul(b, t0, b);
+  /* 2^20 - 2^10 */ fsquare_times(t0, b, 10);
+  /* 2^20 - 2^0 */ fmul(c, t0, b);
+  /* 2^40 - 2^20 */ fsquare_times(t0, c, 20);
+  /* 2^40 - 2^0 */ fmul(t0, t0, c);
+  /* 2^50 - 2^10 */ fsquare_times(t0, t0, 10);
+  /* 2^50 - 2^0 */ fmul(b, t0, b);
+  /* 2^100 - 2^50 */ fsquare_times(t0, b, 50);
+  /* 2^100 - 2^0 */ fmul(c, t0, b);
+  /* 2^200 - 2^100 */ fsquare_times(t0, c, 100);
+  /* 2^200 - 2^0 */ fmul(t0, t0, c);
+  /* 2^250 - 2^50 */ fsquare_times(t0, t0, 50);
+  /* 2^250 - 2^0 */ fmul(t0, t0, b);
+  /* 2^255 - 2^5 */ fsquare_times(t0, t0, 5);
+  /* 2^255 - 21 */ fmul(out, t0, a);
+}
+
+// -----------------------------------------------------------------------------
+// Maybe swap the contents of two felem arrays (@a and @b), each 5 elements
 // long. Perform the swap iff @swap is non-zero.
 //
 // This function performs the swap without leaking any side-channel
 // information.
 // -----------------------------------------------------------------------------
-static void
-swap_conditional(felem *a, felem *b, unsigned len, felem iswap) {
-  unsigned i;
+static void DONNA_INLINE
+swap_conditional(bignum a, bignum b, felem iswap) {
   const felem swap = -iswap;
+  felem x0,x1,x2,x3,x4;
 
-  for (i = 0; i < len; ++i) {
-    const felem x = swap & (a[i] ^ b[i]);
-    a[i] ^= x;
-    b[i] ^= x;
-  }
+  x0 = swap & (a[0] ^ b[0]); a[0] ^= x0; b[0] ^= x0;
+  x1 = swap & (a[1] ^ b[1]); a[1] ^= x1; b[1] ^= x1;
+  x2 = swap & (a[2] ^ b[2]); a[2] ^= x2; b[2] ^= x2;
+  x3 = swap & (a[3] ^ b[3]); a[3] ^= x3; b[3] ^= x3;
+  x4 = swap & (a[4] ^ b[4]); a[4] ^= x4; b[4] ^= x4;
 }
 
 /* Calculates nQ where Q is the x-coordinate of a point on the curve
  *
- *   resultx/resultz: the x coordinate of the resulting curve point (short form)
+ *   mypublic: the packed little endian x coordinate of the resulting curve point
  *   n: a little endian, 32-byte number
- *   q: a point of the curve (short form)
+ *   basepoint: a packed little endian point of the curve
  */
+
 static void
-cmult(felem *resultx, felem *resultz, const u8 *n, const felem *q) {
-  felem a[5] = {0}, b[5] = {1}, c[5] = {1}, d[5] = {0};
-  felem *nqpqx = a, *nqpqz = b, *nqx = c, *nqz = d, *t;
-  felem e[5] = {0}, f[5] = {1}, g[5] = {0}, h[5] = {1};
-  felem *nqpqx2 = e, *nqpqz2 = f, *nqx2 = g, *nqz2 = h;
+curve25519_scalarmult(u8 *mypublic, const u8 n[32], const u8 basepoint[32]) {
+  bignum nqpqx, nqpqz = {1}, nqx = {1}, nqz = {0};
+  bignum q, origx, origxprime, zzz, xx, zz, xxprime, zzprime, zzzprime, zmone;
+  felem bit, lastbit, i;
 
-  unsigned i, j;
+  fexpand(q, basepoint);
+  fcopy(nqpqx, q);
 
-  memcpy(nqpqx, q, sizeof(felem) * 5);
+  i = 255;
+  lastbit = 0;
 
-  for (i = 0; i < 32; ++i) {
-    u8 byte = n[31 - i];
-    for (j = 0; j < 8; ++j) {
-      const felem bit = byte >> 7;
+  do {
+    bit = (n[i/8] >> (i & 7)) & 1;
+    swap_conditional(nqx, nqpqx, bit ^ lastbit);
+    swap_conditional(nqz, nqpqz, bit ^ lastbit);
+    lastbit = bit;
 
-      swap_conditional(nqx, nqpqx, 5, bit);
-      swap_conditional(nqz, nqpqz, 5, bit);
-      fmonty(nqx2, nqz2,
-             nqpqx2, nqpqz2,
-             nqx, nqz,
-             nqpqx, nqpqz,
-             q);
-      swap_conditional(nqx2, nqpqx2, 5, bit);
-      swap_conditional(nqz2, nqpqz2, 5, bit);
+    fcopy(origx, nqx);
+    fsum(nqx, nqz);
+    fdifference_backwards(nqz, origx); // x - z
+    fcopy(origxprime, nqpqx);
+    fsum(nqpqx, nqpqz);
+    fdifference_backwards(nqpqz, origxprime); // nqpqx - nqpqz
+    fmul(xxprime, nqpqx, nqz);
+    fmul(zzprime, nqx, nqpqz);
+    fcopy(origxprime, xxprime);
+    fsum(xxprime, zzprime);
+    fdifference_backwards(zzprime, origxprime); // xxprime - zzprime
+    fsquare_times(zzzprime, zzprime, 1);
+    fsquare_times(nqpqx, xxprime, 1);
+    fmul(nqpqz, zzzprime, q);
+    fsquare_times(xx, nqx, 1);
+    fsquare_times(zz, nqz, 1);
+    fmul(nqx, xx, zz);
+    fdifference_backwards(zz, xx);  // does zz = xx - zz
+    fscalar_product_sum(zzz, zz, 121665, xx); // zzz = (zz * 121665) + xx
+    fmul(nqz, zz, zzz);
+  } while (i--);
 
-      t = nqx;
-      nqx = nqx2;
-      nqx2 = t;
-      t = nqz;
-      nqz = nqz2;
-      nqz2 = t;
-      t = nqpqx;
-      nqpqx = nqpqx2;
-      nqpqx2 = t;
-      t = nqpqz;
-      nqpqz = nqpqz2;
-      nqpqz2 = t;
+  swap_conditional(nqx, nqpqx, bit);
+  swap_conditional(nqz, nqpqz, bit);
 
-      byte <<= 1;
-    }
-  }
-
-  memcpy(resultx, nqx, sizeof(felem) * 5);
-  memcpy(resultz, nqz, sizeof(felem) * 5);
+  crecip(zmone, nqz);
+  fmul(nqz, nqx, zmone);
+  fcontract(mypublic, nqz);
 }
 
-// -----------------------------------------------------------------------------
-// Shamelessly copied from djb's code
-// -----------------------------------------------------------------------------
-static void
-crecip(felem *out, const felem *z) {
-  felem z2[5];
-  felem z9[5];
-  felem z11[5];
-  felem z2_5_0[5];
-  felem z2_10_0[5];
-  felem z2_20_0[5];
-  felem z2_50_0[5];
-  felem z2_100_0[5];
-  felem t0[5];
-  felem t1[5];
-  int i;
-
-  /* 2 */ fsquare(z2,z);
-  /* 4 */ fsquare(t1,z2);
-  /* 8 */ fsquare(t0,t1);
-  /* 9 */ fmul(z9,t0,z);
-  /* 11 */ fmul(z11,z9,z2);
-  /* 22 */ fsquare(t0,z11);
-  /* 2^5 - 2^0 = 31 */ fmul(z2_5_0,t0,z9);
-
-  /* 2^6 - 2^1 */ fsquare(t0,z2_5_0);
-  /* 2^7 - 2^2 */ fsquare(t1,t0);
-  /* 2^8 - 2^3 */ fsquare(t0,t1);
-  /* 2^9 - 2^4 */ fsquare(t1,t0);
-  /* 2^10 - 2^5 */ fsquare(t0,t1);
-  /* 2^10 - 2^0 */ fmul(z2_10_0,t0,z2_5_0);
-
-  /* 2^11 - 2^1 */ fsquare(t0,z2_10_0);
-  /* 2^12 - 2^2 */ fsquare(t1,t0);
-  /* 2^20 - 2^10 */ for (i = 2;i < 10;i += 2) { fsquare(t0,t1); fsquare(t1,t0); }
-  /* 2^20 - 2^0 */ fmul(z2_20_0,t1,z2_10_0);
-
-  /* 2^21 - 2^1 */ fsquare(t0,z2_20_0);
-  /* 2^22 - 2^2 */ fsquare(t1,t0);
-  /* 2^40 - 2^20 */ for (i = 2;i < 20;i += 2) { fsquare(t0,t1); fsquare(t1,t0); }
-  /* 2^40 - 2^0 */ fmul(t0,t1,z2_20_0);
-
-  /* 2^41 - 2^1 */ fsquare(t1,t0);
-  /* 2^42 - 2^2 */ fsquare(t0,t1);
-  /* 2^50 - 2^10 */ for (i = 2;i < 10;i += 2) { fsquare(t1,t0); fsquare(t0,t1); }
-  /* 2^50 - 2^0 */ fmul(z2_50_0,t0,z2_10_0);
-
-  /* 2^51 - 2^1 */ fsquare(t0,z2_50_0);
-  /* 2^52 - 2^2 */ fsquare(t1,t0);
-  /* 2^100 - 2^50 */ for (i = 2;i < 50;i += 2) { fsquare(t0,t1); fsquare(t1,t0); }
-  /* 2^100 - 2^0 */ fmul(z2_100_0,t1,z2_50_0);
-
-  /* 2^101 - 2^1 */ fsquare(t1,z2_100_0);
-  /* 2^102 - 2^2 */ fsquare(t0,t1);
-  /* 2^200 - 2^100 */ for (i = 2;i < 100;i += 2) { fsquare(t1,t0); fsquare(t0,t1); }
-  /* 2^200 - 2^0 */ fmul(t1,t0,z2_100_0);
-
-  /* 2^201 - 2^1 */ fsquare(t0,t1);
-  /* 2^202 - 2^2 */ fsquare(t1,t0);
-  /* 2^250 - 2^50 */ for (i = 2;i < 50;i += 2) { fsquare(t0,t1); fsquare(t1,t0); }
-  /* 2^250 - 2^0 */ fmul(t0,t1,z2_50_0);
-
-  /* 2^251 - 2^1 */ fsquare(t1,t0);
-  /* 2^252 - 2^2 */ fsquare(t0,t1);
-  /* 2^253 - 2^3 */ fsquare(t1,t0);
-  /* 2^254 - 2^4 */ fsquare(t0,t1);
-  /* 2^255 - 2^5 */ fsquare(t1,t0);
-  /* 2^255 - 21 */ fmul(out,t1,z11);
-}
 
 int
 curve25519_donna(u8 *mypublic, const u8 *secret, const u8 *basepoint) {
-  felem bp[5], x[5], z[5], zmone[5];
-  uint8_t e[32];
-  int i;
+  u8 e[32];
+  felem i;
 
   for (i = 0;i < 32;++i) e[i] = secret[i];
   e[0] &= 248;
   e[31] &= 127;
   e[31] |= 64;
-
-  fexpand(bp, basepoint);
-  cmult(x, z, e, bp);
-  crecip(zmone, z);
-  fmul(z, x, zmone);
-  fcontract(mypublic, z);
+  curve25519_scalarmult(mypublic, e, basepoint);
   return 0;
 }
