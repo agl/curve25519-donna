@@ -27,10 +27,10 @@
 
 #define DONNA_INLINE
 #if defined(DONNA_INLINE)
-	#undef DONNA_INLINE
-	#define DONNA_INLINE __attribute__((always_inline))
+  #undef DONNA_INLINE
+  #define DONNA_INLINE __attribute__((always_inline))
 #else
-	#define DONNA_INLINE
+  #define DONNA_INLINE
 #endif
 
 typedef uint8_t u8;
@@ -190,10 +190,10 @@ fsquare_times(bignum output, const bignum in, felem count) {
     d419 = r4 * 19;
     d4 = d419 * 2;
 
-	t[0] = ((felemx2) r0) * r0 + ((felemx2) d4) * r1 + (((felemx2) d2) * (r3     ));
-	t[1] = ((felemx2) d0) * r1 + ((felemx2) d4) * r2 + (((felemx2) r3) * (r3 * 19));
-	t[2] = ((felemx2) d0) * r2 + ((felemx2) r1) * r1 + (((felemx2) d4) * (r3     ));
-	t[3] = ((felemx2) d0) * r3 + ((felemx2) d1) * r2 + (((felemx2) r4) * (d419   ));
+    t[0] = ((felemx2) r0) * r0 + ((felemx2) d4) * r1 + (((felemx2) d2) * (r3     ));
+    t[1] = ((felemx2) d0) * r1 + ((felemx2) d4) * r2 + (((felemx2) r3) * (r3 * 19));
+    t[2] = ((felemx2) d0) * r2 + ((felemx2) r1) * r1 + (((felemx2) d4) * (r3     ));
+    t[3] = ((felemx2) d0) * r3 + ((felemx2) d1) * r2 + (((felemx2) r4) * (d419   ));
     t[4] = ((felemx2) d0) * r4 + ((felemx2) d1) * r3 + (((felemx2) r2) * (r2     ));
 
                     r0 = (felem)t[0] & 0x7ffffffffffff; c = (felem)(t[0] >> 51);
