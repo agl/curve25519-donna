@@ -50,10 +50,10 @@
 #include <stdint.h>
 
 typedef uint8_t u8;
-typedef int64_t felem;
+typedef int64_t limb;
 
 /* Sum two numbers: output += in */
-static void fsum(felem *output, const felem *in) {
+static void fsum(limb *output, const limb *in) {
   unsigned i;
   for (i = 0; i < 10; i += 2) {
     output[0+i] = (output[0+i] + in[0+i]);
@@ -64,7 +64,7 @@ static void fsum(felem *output, const felem *in) {
 /* Find the difference of two numbers: output = in - output
  * (note the order of the arguments!)
  */
-static void fdifference(felem *output, const felem *in) {
+static void fdifference(limb *output, const limb *in) {
   unsigned i;
   for (i = 0; i < 10; ++i) {
     output[i] = (in[i] - output[i]);
@@ -72,7 +72,7 @@ static void fdifference(felem *output, const felem *in) {
 }
 
 /* Multiply a number my a scalar: output = in * scalar */
-static void fscalar_product(felem *output, const felem *in, const felem scalar) {
+static void fscalar_product(limb *output, const limb *in, const limb scalar) {
   unsigned i;
   for (i = 0; i < 10; ++i) {
     output[i] = in[i] * scalar;
@@ -84,7 +84,7 @@ static void fscalar_product(felem *output, const felem *in, const felem scalar) 
  * output must be distinct to both inputs. The inputs are reduced coefficient
  * form, the output is not.
  */
-static void fproduct(felem *output, const felem *in2, const felem *in) {
+static void fproduct(limb *output, const limb *in2, const limb *in) {
   output[0] =       in2[0] * in[0];
   output[1] =       in2[0] * in[1] +
                     in2[1] * in[0];
@@ -188,7 +188,7 @@ static void fproduct(felem *output, const felem *in2, const felem *in) {
 }
 
 /* Reduce a long form to a short form by taking the input mod 2^255 - 19. */
-static void freduce_degree(felem *output) {
+static void freduce_degree(limb *output) {
   output[8] += 19 * output[18];
   output[7] += 19 * output[17];
   output[6] += 19 * output[16];
@@ -202,13 +202,13 @@ static void freduce_degree(felem *output) {
 
 /* Reduce all coefficients of the short form input to be -2**25 <= x <= 2**25
  */
-static void freduce_coefficients(felem *output) {
+static void freduce_coefficients(limb *output) {
   unsigned i;
   do {
     output[10] = 0;
 
     for (i = 0; i < 10; i += 2) {
-      felem over = output[i] / 0x4000000l;
+      limb over = output[i] / 0x4000000l;
       output[i+1] += over;
       output[i] -= over * 0x4000000l;
 
@@ -226,15 +226,15 @@ static void freduce_coefficients(felem *output) {
  * reduced coefficient.
  */
 static void
-fmul(felem *output, const felem *in, const felem *in2) {
-  felem t[19];
+fmul(limb *output, const limb *in, const limb *in2) {
+  limb t[19];
   fproduct(t, in, in2);
   freduce_degree(t);
   freduce_coefficients(t);
-  memcpy(output, t, sizeof(felem) * 10);
+  memcpy(output, t, sizeof(limb) * 10);
 }
 
-static void fsquare_inner(felem *output, const felem *in) {
+static void fsquare_inner(limb *output, const limb *in) {
   output[0] =       in[0] * in[0];
   output[1] =  2 *  in[0] * in[1];
   output[2] =  2 * (in[1] * in[1] +
@@ -293,22 +293,22 @@ static void fsquare_inner(felem *output, const felem *in) {
 }
 
 static void
-fsquare(felem *output, const felem *in) {
-  felem t[19];
+fsquare(limb *output, const limb *in) {
+  limb t[19];
   fsquare_inner(t, in);
   freduce_degree(t);
   freduce_coefficients(t);
-  memcpy(output, t, sizeof(felem) * 10);
+  memcpy(output, t, sizeof(limb) * 10);
 }
 
 /* Take a little-endian, 32-byte number and expand it into polynomial form */
 static void
-fexpand(felem *output, const u8 *input) {
+fexpand(limb *output, const u8 *input) {
 #define F(n,start,shift,mask) \
-  output[n] = ((((felem) input[start + 0]) | \
-                ((felem) input[start + 1]) << 8 | \
-                ((felem) input[start + 2]) << 16 | \
-                ((felem) input[start + 3]) << 24) >> shift) & mask;
+  output[n] = ((((limb) input[start + 0]) | \
+                ((limb) input[start + 1]) << 8 | \
+                ((limb) input[start + 2]) << 16 | \
+                ((limb) input[start + 3]) << 24) >> shift) & mask;
   F(0, 0, 0, 0x3ffffff);
   F(1, 3, 2, 0x1ffffff);
   F(2, 6, 3, 0x3ffffff);
@@ -326,7 +326,7 @@ fexpand(felem *output, const u8 *input) {
  * little-endian, 32-byte array
  */
 static void
-fcontract(u8 *output, felem *input) {
+fcontract(u8 *output, limb *input) {
   int i;
 
   do {
@@ -386,19 +386,19 @@ fcontract(u8 *output, felem *input) {
  *   xprime zprime: short form, destroyed
  *   qmqp: short form, preserved
  */
-static void fmonty(felem *x2, felem *z2,  /* output 2Q */
-                   felem *x3, felem *z3,  /* output Q + Q' */
-                   felem *x, felem *z,    /* input Q */
-                   felem *xprime, felem *zprime,  /* input Q' */
-                   const felem *qmqp /* input Q - Q' */) {
-  felem origx[10], origxprime[10], zzz[19], xx[19], zz[19], xxprime[19],
+static void fmonty(limb *x2, limb *z2,  /* output 2Q */
+                   limb *x3, limb *z3,  /* output Q + Q' */
+                   limb *x, limb *z,    /* input Q */
+                   limb *xprime, limb *zprime,  /* input Q' */
+                   const limb *qmqp /* input Q - Q' */) {
+  limb origx[10], origxprime[10], zzz[19], xx[19], zz[19], xxprime[19],
         zzprime[19], zzzprime[19], xxxprime[19];
 
-  memcpy(origx, x, 10 * sizeof(felem));
+  memcpy(origx, x, 10 * sizeof(limb));
   fsum(x, z);
   fdifference(z, origx);  // does x - z
 
-  memcpy(origxprime, xprime, sizeof(felem) * 10);
+  memcpy(origxprime, xprime, sizeof(limb) * 10);
   fsum(xprime, zprime);
   fdifference(zprime, origxprime);
   fproduct(xxprime, xprime, z);
@@ -407,7 +407,7 @@ static void fmonty(felem *x2, felem *z2,  /* output 2Q */
   freduce_coefficients(xxprime);
   freduce_degree(zzprime);
   freduce_coefficients(zzprime);
-  memcpy(origxprime, xxprime, sizeof(felem) * 10);
+  memcpy(origxprime, xxprime, sizeof(limb) * 10);
   fsum(xxprime, zzprime);
   fdifference(zzprime, origxprime);
   fsquare(xxxprime, xxprime);
@@ -415,8 +415,8 @@ static void fmonty(felem *x2, felem *z2,  /* output 2Q */
   fproduct(zzprime, zzzprime, qmqp);
   freduce_degree(zzprime);
   freduce_coefficients(zzprime);
-  memcpy(x3, xxxprime, sizeof(felem) * 10);
-  memcpy(z3, zzprime, sizeof(felem) * 10);
+  memcpy(x3, xxxprime, sizeof(limb) * 10);
+  memcpy(z3, zzprime, sizeof(limb) * 10);
 
   fsquare(xx, x);
   fsquare(zz, z);
@@ -424,7 +424,7 @@ static void fmonty(felem *x2, felem *z2,  /* output 2Q */
   freduce_degree(x2);
   freduce_coefficients(x2);
   fdifference(zz, xx);  // does zz = xx - zz
-  memset(zzz + 10, 0, sizeof(felem) * 9);
+  memset(zzz + 10, 0, sizeof(limb) * 9);
   fscalar_product(zzz, zz, 121665);
   freduce_degree(zzz);
   freduce_coefficients(zzz);
@@ -441,15 +441,15 @@ static void fmonty(felem *x2, felem *z2,  /* output 2Q */
  *   q: a point of the curve (short form)
  */
 static void
-cmult(felem *resultx, felem *resultz, const u8 *n, const felem *q) {
-  felem a[19] = {0}, b[19] = {1}, c[19] = {1}, d[19] = {0};
-  felem *nqpqx = a, *nqpqz = b, *nqx = c, *nqz = d, *t;
-  felem e[19] = {0}, f[19] = {1}, g[19] = {0}, h[19] = {1};
-  felem *nqpqx2 = e, *nqpqz2 = f, *nqx2 = g, *nqz2 = h;
+cmult(limb *resultx, limb *resultz, const u8 *n, const limb *q) {
+  limb a[19] = {0}, b[19] = {1}, c[19] = {1}, d[19] = {0};
+  limb *nqpqx = a, *nqpqz = b, *nqx = c, *nqz = d, *t;
+  limb e[19] = {0}, f[19] = {1}, g[19] = {0}, h[19] = {1};
+  limb *nqpqx2 = e, *nqpqz2 = f, *nqx2 = g, *nqz2 = h;
 
   unsigned i, j;
 
-  memcpy(nqpqx, q, sizeof(felem) * 10);
+  memcpy(nqpqx, q, sizeof(limb) * 10);
 
   for (i = 0; i < 32; ++i) {
     u8 byte = n[31 - i];
@@ -485,25 +485,25 @@ cmult(felem *resultx, felem *resultz, const u8 *n, const felem *q) {
     }
   }
 
-  memcpy(resultx, nqx, sizeof(felem) * 10);
-  memcpy(resultz, nqz, sizeof(felem) * 10);
+  memcpy(resultx, nqx, sizeof(limb) * 10);
+  memcpy(resultz, nqz, sizeof(limb) * 10);
 }
 
 // -----------------------------------------------------------------------------
 // Shamelessly copied from djb's code
 // -----------------------------------------------------------------------------
 static void
-crecip(felem *out, const felem *z) {
-  felem z2[10];
-  felem z9[10];
-  felem z11[10];
-  felem z2_5_0[10];
-  felem z2_10_0[10];
-  felem z2_20_0[10];
-  felem z2_50_0[10];
-  felem z2_100_0[10];
-  felem t0[10];
-  felem t1[10];
+crecip(limb *out, const limb *z) {
+  limb z2[10];
+  limb z9[10];
+  limb z11[10];
+  limb z2_5_0[10];
+  limb z2_10_0[10];
+  limb z2_20_0[10];
+  limb z2_50_0[10];
+  limb z2_100_0[10];
+  limb t0[10];
+  limb t1[10];
   int i;
 
   /* 2 */ fsquare(z2,z);
@@ -561,7 +561,7 @@ crecip(felem *out, const felem *z) {
 
 int
 curve25519_donna(u8 *mypublic, const u8 *secret, const u8 *basepoint) {
-  felem bp[10], x[10], z[10], zmone[10];
+  limb bp[10], x[10], z[10], zmone[10];
   uint8_t e[32];
   int i;
 
