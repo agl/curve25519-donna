@@ -53,6 +53,15 @@ typedef uint8_t u8;
 typedef int32_t s32;
 typedef int64_t limb;
 
+/* Field element representation:
+ *
+ * Field elements are written as an array of signed, 64-bit limbs, least
+ * significant first. The value of the field element is:
+ *   x[0] + 2^26·x[1] + x^51·x[2] + 2^102·x[3] + ...
+ *
+ * i.e. the limbs are 26, 25, 26, 25, ... bits wide.
+ */
+
 /* Sum two numbers: output += in */
 static void fsum(limb *output, const limb *in) {
   unsigned i;
