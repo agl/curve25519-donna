@@ -208,10 +208,9 @@ static void freduce_coefficients(felem *output) {
     output[10] = 0;
 
     for (i = 0; i < 10; i += 2) {
-      felem over = output[i] / 0x2000000l;
-      const felem over2 = (over + ((over >> 63) * 2) + 1) / 2;
-      output[i+1] += over2;
-      output[i] -= over2 * 0x4000000l;
+      felem over = output[i] / 0x4000000l;
+      output[i+1] += over;
+      output[i] -= over * 0x4000000l;
 
       over = output[i+1] / 0x2000000;
       output[i+2] += over;
