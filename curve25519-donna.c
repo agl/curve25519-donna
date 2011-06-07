@@ -199,6 +199,7 @@ static void fproduct(limb *output, const limb *in2, const limb *in) {
 
 /* Reduce a long form to a short form by taking the input mod 2^255 - 19. */
 static void freduce_degree(limb *output) {
+  /* Each of these shifts and adds ends up multiplying the value by 19. */
   output[8] += output[18] << 4;
   output[8] += output[18] << 1;
   output[8] += output[18];
@@ -228,7 +229,9 @@ static void freduce_degree(limb *output) {
   output[0] += output[10];
 }
 
-/* Reduce all coefficients of the short form input to be -2**25 <= x <= 2**25
+/* Reduce all coefficients of the short form input so that |x| < 2^26.
+ *
+ * On entry: |output[i]| < 2^62
  */
 static void freduce_coefficients(limb *output) {
   unsigned i;
