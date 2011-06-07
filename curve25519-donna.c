@@ -50,6 +50,7 @@
 #include <stdint.h>
 
 typedef uint8_t u8;
+typedef int32_t s32;
 typedef int64_t limb;
 
 /* Sum two numbers: output += in */
@@ -85,106 +86,106 @@ static void fscalar_product(limb *output, const limb *in, const limb scalar) {
  * form, the output is not.
  */
 static void fproduct(limb *output, const limb *in2, const limb *in) {
-  output[0] =       in2[0] * in[0];
-  output[1] =       in2[0] * in[1] +
-                    in2[1] * in[0];
-  output[2] =  2 *  in2[1] * in[1] +
-                    in2[0] * in[2] +
-                    in2[2] * in[0];
-  output[3] =       in2[1] * in[2] +
-                    in2[2] * in[1] +
-                    in2[0] * in[3] +
-                    in2[3] * in[0];
-  output[4] =       in2[2] * in[2] +
-               2 * (in2[1] * in[3] +
-                    in2[3] * in[1]) +
-                    in2[0] * in[4] +
-                    in2[4] * in[0];
-  output[5] =       in2[2] * in[3] +
-                    in2[3] * in[2] +
-                    in2[1] * in[4] +
-                    in2[4] * in[1] +
-                    in2[0] * in[5] +
-                    in2[5] * in[0];
-  output[6] =  2 * (in2[3] * in[3] +
-                    in2[1] * in[5] +
-                    in2[5] * in[1]) +
-                    in2[2] * in[4] +
-                    in2[4] * in[2] +
-                    in2[0] * in[6] +
-                    in2[6] * in[0];
-  output[7] =       in2[3] * in[4] +
-                    in2[4] * in[3] +
-                    in2[2] * in[5] +
-                    in2[5] * in[2] +
-                    in2[1] * in[6] +
-                    in2[6] * in[1] +
-                    in2[0] * in[7] +
-                    in2[7] * in[0];
-  output[8] =       in2[4] * in[4] +
-               2 * (in2[3] * in[5] +
-                    in2[5] * in[3] +
-                    in2[1] * in[7] +
-                    in2[7] * in[1]) +
-                    in2[2] * in[6] +
-                    in2[6] * in[2] +
-                    in2[0] * in[8] +
-                    in2[8] * in[0];
-  output[9] =       in2[4] * in[5] +
-                    in2[5] * in[4] +
-                    in2[3] * in[6] +
-                    in2[6] * in[3] +
-                    in2[2] * in[7] +
-                    in2[7] * in[2] +
-                    in2[1] * in[8] +
-                    in2[8] * in[1] +
-                    in2[0] * in[9] +
-                    in2[9] * in[0];
-  output[10] = 2 * (in2[5] * in[5] +
-                    in2[3] * in[7] +
-                    in2[7] * in[3] +
-                    in2[1] * in[9] +
-                    in2[9] * in[1]) +
-                    in2[4] * in[6] +
-                    in2[6] * in[4] +
-                    in2[2] * in[8] +
-                    in2[8] * in[2];
-  output[11] =      in2[5] * in[6] +
-                    in2[6] * in[5] +
-                    in2[4] * in[7] +
-                    in2[7] * in[4] +
-                    in2[3] * in[8] +
-                    in2[8] * in[3] +
-                    in2[2] * in[9] +
-                    in2[9] * in[2];
-  output[12] =      in2[6] * in[6] +
-               2 * (in2[5] * in[7] +
-                    in2[7] * in[5] +
-                    in2[3] * in[9] +
-                    in2[9] * in[3]) +
-                    in2[4] * in[8] +
-                    in2[8] * in[4];
-  output[13] =      in2[6] * in[7] +
-                    in2[7] * in[6] +
-                    in2[5] * in[8] +
-                    in2[8] * in[5] +
-                    in2[4] * in[9] +
-                    in2[9] * in[4];
-  output[14] = 2 * (in2[7] * in[7] +
-                    in2[5] * in[9] +
-                    in2[9] * in[5]) +
-                    in2[6] * in[8] +
-                    in2[8] * in[6];
-  output[15] =      in2[7] * in[8] +
-                    in2[8] * in[7] +
-                    in2[6] * in[9] +
-                    in2[9] * in[6];
-  output[16] =      in2[8] * in[8] +
-               2 * (in2[7] * in[9] +
-                    in2[9] * in[7]);
-  output[17] =      in2[8] * in[9] +
-                    in2[9] * in[8];
-  output[18] = 2 *  in2[9] * in[9];
+  output[0] =       ((limb) ((s32) in2[0])) * ((s32) in[0]);
+  output[1] =       ((limb) ((s32) in2[0])) * ((s32) in[1]) +
+                    ((limb) ((s32) in2[1])) * ((s32) in[0]);
+  output[2] =  2 *  ((limb) ((s32) in2[1])) * ((s32) in[1]) +
+                    ((limb) ((s32) in2[0])) * ((s32) in[2]) +
+                    ((limb) ((s32) in2[2])) * ((s32) in[0]);
+  output[3] =       ((limb) ((s32) in2[1])) * ((s32) in[2]) +
+                    ((limb) ((s32) in2[2])) * ((s32) in[1]) +
+                    ((limb) ((s32) in2[0])) * ((s32) in[3]) +
+                    ((limb) ((s32) in2[3])) * ((s32) in[0]);
+  output[4] =       ((limb) ((s32) in2[2])) * ((s32) in[2]) +
+               2 * (((limb) ((s32) in2[1])) * ((s32) in[3]) +
+                    ((limb) ((s32) in2[3])) * ((s32) in[1])) +
+                    ((limb) ((s32) in2[0])) * ((s32) in[4]) +
+                    ((limb) ((s32) in2[4])) * ((s32) in[0]);
+  output[5] =       ((limb) ((s32) in2[2])) * ((s32) in[3]) +
+                    ((limb) ((s32) in2[3])) * ((s32) in[2]) +
+                    ((limb) ((s32) in2[1])) * ((s32) in[4]) +
+                    ((limb) ((s32) in2[4])) * ((s32) in[1]) +
+                    ((limb) ((s32) in2[0])) * ((s32) in[5]) +
+                    ((limb) ((s32) in2[5])) * ((s32) in[0]);
+  output[6] =  2 * (((limb) ((s32) in2[3])) * ((s32) in[3]) +
+                    ((limb) ((s32) in2[1])) * ((s32) in[5]) +
+                    ((limb) ((s32) in2[5])) * ((s32) in[1])) +
+                    ((limb) ((s32) in2[2])) * ((s32) in[4]) +
+                    ((limb) ((s32) in2[4])) * ((s32) in[2]) +
+                    ((limb) ((s32) in2[0])) * ((s32) in[6]) +
+                    ((limb) ((s32) in2[6])) * ((s32) in[0]);
+  output[7] =       ((limb) ((s32) in2[3])) * ((s32) in[4]) +
+                    ((limb) ((s32) in2[4])) * ((s32) in[3]) +
+                    ((limb) ((s32) in2[2])) * ((s32) in[5]) +
+                    ((limb) ((s32) in2[5])) * ((s32) in[2]) +
+                    ((limb) ((s32) in2[1])) * ((s32) in[6]) +
+                    ((limb) ((s32) in2[6])) * ((s32) in[1]) +
+                    ((limb) ((s32) in2[0])) * ((s32) in[7]) +
+                    ((limb) ((s32) in2[7])) * ((s32) in[0]);
+  output[8] =       ((limb) ((s32) in2[4])) * ((s32) in[4]) +
+               2 * (((limb) ((s32) in2[3])) * ((s32) in[5]) +
+                    ((limb) ((s32) in2[5])) * ((s32) in[3]) +
+                    ((limb) ((s32) in2[1])) * ((s32) in[7]) +
+                    ((limb) ((s32) in2[7])) * ((s32) in[1])) +
+                    ((limb) ((s32) in2[2])) * ((s32) in[6]) +
+                    ((limb) ((s32) in2[6])) * ((s32) in[2]) +
+                    ((limb) ((s32) in2[0])) * ((s32) in[8]) +
+                    ((limb) ((s32) in2[8])) * ((s32) in[0]);
+  output[9] =       ((limb) ((s32) in2[4])) * ((s32) in[5]) +
+                    ((limb) ((s32) in2[5])) * ((s32) in[4]) +
+                    ((limb) ((s32) in2[3])) * ((s32) in[6]) +
+                    ((limb) ((s32) in2[6])) * ((s32) in[3]) +
+                    ((limb) ((s32) in2[2])) * ((s32) in[7]) +
+                    ((limb) ((s32) in2[7])) * ((s32) in[2]) +
+                    ((limb) ((s32) in2[1])) * ((s32) in[8]) +
+                    ((limb) ((s32) in2[8])) * ((s32) in[1]) +
+                    ((limb) ((s32) in2[0])) * ((s32) in[9]) +
+                    ((limb) ((s32) in2[9])) * ((s32) in[0]);
+  output[10] = 2 * (((limb) ((s32) in2[5])) * ((s32) in[5]) +
+                    ((limb) ((s32) in2[3])) * ((s32) in[7]) +
+                    ((limb) ((s32) in2[7])) * ((s32) in[3]) +
+                    ((limb) ((s32) in2[1])) * ((s32) in[9]) +
+                    ((limb) ((s32) in2[9])) * ((s32) in[1])) +
+                    ((limb) ((s32) in2[4])) * ((s32) in[6]) +
+                    ((limb) ((s32) in2[6])) * ((s32) in[4]) +
+                    ((limb) ((s32) in2[2])) * ((s32) in[8]) +
+                    ((limb) ((s32) in2[8])) * ((s32) in[2]);
+  output[11] =      ((limb) ((s32) in2[5])) * ((s32) in[6]) +
+                    ((limb) ((s32) in2[6])) * ((s32) in[5]) +
+                    ((limb) ((s32) in2[4])) * ((s32) in[7]) +
+                    ((limb) ((s32) in2[7])) * ((s32) in[4]) +
+                    ((limb) ((s32) in2[3])) * ((s32) in[8]) +
+                    ((limb) ((s32) in2[8])) * ((s32) in[3]) +
+                    ((limb) ((s32) in2[2])) * ((s32) in[9]) +
+                    ((limb) ((s32) in2[9])) * ((s32) in[2]);
+  output[12] =      ((limb) ((s32) in2[6])) * ((s32) in[6]) +
+               2 * (((limb) ((s32) in2[5])) * ((s32) in[7]) +
+                    ((limb) ((s32) in2[7])) * ((s32) in[5]) +
+                    ((limb) ((s32) in2[3])) * ((s32) in[9]) +
+                    ((limb) ((s32) in2[9])) * ((s32) in[3])) +
+                    ((limb) ((s32) in2[4])) * ((s32) in[8]) +
+                    ((limb) ((s32) in2[8])) * ((s32) in[4]);
+  output[13] =      ((limb) ((s32) in2[6])) * ((s32) in[7]) +
+                    ((limb) ((s32) in2[7])) * ((s32) in[6]) +
+                    ((limb) ((s32) in2[5])) * ((s32) in[8]) +
+                    ((limb) ((s32) in2[8])) * ((s32) in[5]) +
+                    ((limb) ((s32) in2[4])) * ((s32) in[9]) +
+                    ((limb) ((s32) in2[9])) * ((s32) in[4]);
+  output[14] = 2 * (((limb) ((s32) in2[7])) * ((s32) in[7]) +
+                    ((limb) ((s32) in2[5])) * ((s32) in[9]) +
+                    ((limb) ((s32) in2[9])) * ((s32) in[5])) +
+                    ((limb) ((s32) in2[6])) * ((s32) in[8]) +
+                    ((limb) ((s32) in2[8])) * ((s32) in[6]);
+  output[15] =      ((limb) ((s32) in2[7])) * ((s32) in[8]) +
+                    ((limb) ((s32) in2[8])) * ((s32) in[7]) +
+                    ((limb) ((s32) in2[6])) * ((s32) in[9]) +
+                    ((limb) ((s32) in2[9])) * ((s32) in[6]);
+  output[16] =      ((limb) ((s32) in2[8])) * ((s32) in[8]) +
+               2 * (((limb) ((s32) in2[7])) * ((s32) in[9]) +
+                    ((limb) ((s32) in2[9])) * ((s32) in[7]));
+  output[17] =      ((limb) ((s32) in2[8])) * ((s32) in[9]) +
+                    ((limb) ((s32) in2[9])) * ((s32) in[8]);
+  output[18] = 2 *  ((limb) ((s32) in2[9])) * ((s32) in[9]);
 }
 
 /* Reduce a long form to a short form by taking the input mod 2^255 - 19. */
@@ -235,61 +236,61 @@ fmul(limb *output, const limb *in, const limb *in2) {
 }
 
 static void fsquare_inner(limb *output, const limb *in) {
-  output[0] =       in[0] * in[0];
-  output[1] =  2 *  in[0] * in[1];
-  output[2] =  2 * (in[1] * in[1] +
-                    in[0] * in[2]);
-  output[3] =  2 * (in[1] * in[2] +
-                    in[0] * in[3]);
-  output[4] =       in[2] * in[2] +
-               4 *  in[1] * in[3] +
-               2 *  in[0] * in[4];
-  output[5] =  2 * (in[2] * in[3] +
-                    in[1] * in[4] +
-                    in[0] * in[5]);
-  output[6] =  2 * (in[3] * in[3] +
-                    in[2] * in[4] +
-                    in[0] * in[6] +
-               2 *  in[1] * in[5]);
-  output[7] =  2 * (in[3] * in[4] +
-                    in[2] * in[5] +
-                    in[1] * in[6] +
-                    in[0] * in[7]);
-  output[8] =       in[4] * in[4] +
-               2 * (in[2] * in[6] +
-                    in[0] * in[8] +
-               2 * (in[1] * in[7] +
-                    in[3] * in[5]));
-  output[9] =  2 * (in[4] * in[5] +
-                    in[3] * in[6] +
-                    in[2] * in[7] +
-                    in[1] * in[8] +
-                    in[0] * in[9]);
-  output[10] = 2 * (in[5] * in[5] +
-                    in[4] * in[6] +
-                    in[2] * in[8] +
-               2 * (in[3] * in[7] +
-                    in[1] * in[9]));
-  output[11] = 2 * (in[5] * in[6] +
-                    in[4] * in[7] +
-                    in[3] * in[8] +
-                    in[2] * in[9]);
-  output[12] =      in[6] * in[6] +
-               2 * (in[4] * in[8] +
-               2 * (in[5] * in[7] +
-                    in[3] * in[9]));
-  output[13] = 2 * (in[6] * in[7] +
-                    in[5] * in[8] +
-                    in[4] * in[9]);
-  output[14] = 2 * (in[7] * in[7] +
-                    in[6] * in[8] +
-               2 *  in[5] * in[9]);
-  output[15] = 2 * (in[7] * in[8] +
-                    in[6] * in[9]);
-  output[16] =      in[8] * in[8] +
-               4 *  in[7] * in[9];
-  output[17] = 2 *  in[8] * in[9];
-  output[18] = 2 *  in[9] * in[9];
+  output[0] =       ((limb) ((s32) in[0])) * ((s32) in[0]);
+  output[1] =  2 *  ((limb) ((s32) in[0])) * ((s32) in[1]);
+  output[2] =  2 * (((limb) ((s32) in[1])) * ((s32) in[1]) +
+                    ((limb) ((s32) in[0])) * ((s32) in[2]));
+  output[3] =  2 * (((limb) ((s32) in[1])) * ((s32) in[2]) +
+                    ((limb) ((s32) in[0])) * ((s32) in[3]));
+  output[4] =       ((limb) ((s32) in[2])) * ((s32) in[2]) +
+               4 *  ((limb) ((s32) in[1])) * ((s32) in[3]) +
+               2 *  ((limb) ((s32) in[0])) * ((s32) in[4]);
+  output[5] =  2 * (((limb) ((s32) in[2])) * ((s32) in[3]) +
+                    ((limb) ((s32) in[1])) * ((s32) in[4]) +
+                    ((limb) ((s32) in[0])) * ((s32) in[5]));
+  output[6] =  2 * (((limb) ((s32) in[3])) * ((s32) in[3]) +
+                    ((limb) ((s32) in[2])) * ((s32) in[4]) +
+                    ((limb) ((s32) in[0])) * ((s32) in[6]) +
+               2 *  ((limb) ((s32) in[1])) * ((s32) in[5]));
+  output[7] =  2 * (((limb) ((s32) in[3])) * ((s32) in[4]) +
+                    ((limb) ((s32) in[2])) * ((s32) in[5]) +
+                    ((limb) ((s32) in[1])) * ((s32) in[6]) +
+                    ((limb) ((s32) in[0])) * ((s32) in[7]));
+  output[8] =       ((limb) ((s32) in[4])) * ((s32) in[4]) +
+               2 * (((limb) ((s32) in[2])) * ((s32) in[6]) +
+                    ((limb) ((s32) in[0])) * ((s32) in[8]) +
+               2 * (((limb) ((s32) in[1])) * ((s32) in[7]) +
+                    ((limb) ((s32) in[3])) * ((s32) in[5])));
+  output[9] =  2 * (((limb) ((s32) in[4])) * ((s32) in[5]) +
+                    ((limb) ((s32) in[3])) * ((s32) in[6]) +
+                    ((limb) ((s32) in[2])) * ((s32) in[7]) +
+                    ((limb) ((s32) in[1])) * ((s32) in[8]) +
+                    ((limb) ((s32) in[0])) * ((s32) in[9]));
+  output[10] = 2 * (((limb) ((s32) in[5])) * ((s32) in[5]) +
+                    ((limb) ((s32) in[4])) * ((s32) in[6]) +
+                    ((limb) ((s32) in[2])) * ((s32) in[8]) +
+               2 * (((limb) ((s32) in[3])) * ((s32) in[7]) +
+                    ((limb) ((s32) in[1])) * ((s32) in[9])));
+  output[11] = 2 * (((limb) ((s32) in[5])) * ((s32) in[6]) +
+                    ((limb) ((s32) in[4])) * ((s32) in[7]) +
+                    ((limb) ((s32) in[3])) * ((s32) in[8]) +
+                    ((limb) ((s32) in[2])) * ((s32) in[9]));
+  output[12] =      ((limb) ((s32) in[6])) * ((s32) in[6]) +
+               2 * (((limb) ((s32) in[4])) * ((s32) in[8]) +
+               2 * (((limb) ((s32) in[5])) * ((s32) in[7]) +
+                    ((limb) ((s32) in[3])) * ((s32) in[9])));
+  output[13] = 2 * (((limb) ((s32) in[6])) * ((s32) in[7]) +
+                    ((limb) ((s32) in[5])) * ((s32) in[8]) +
+                    ((limb) ((s32) in[4])) * ((s32) in[9]));
+  output[14] = 2 * (((limb) ((s32) in[7])) * ((s32) in[7]) +
+                    ((limb) ((s32) in[6])) * ((s32) in[8]) +
+               2 *  ((limb) ((s32) in[5])) * ((s32) in[9]));
+  output[15] = 2 * (((limb) ((s32) in[7])) * ((s32) in[8]) +
+                    ((limb) ((s32) in[6])) * ((s32) in[9]));
+  output[16] =      ((limb) ((s32) in[8])) * ((s32) in[8]) +
+               4 *  ((limb) ((s32) in[7])) * ((s32) in[9]);
+  output[17] = 2 *  ((limb) ((s32) in[8])) * ((s32) in[9]);
+  output[18] = 2 *  ((limb) ((s32) in[9])) * ((s32) in[9]);
 }
 
 static void
