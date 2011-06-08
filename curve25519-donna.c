@@ -239,15 +239,18 @@ static void freduce_coefficients(limb *output) {
     output[10] = 0;
 
     for (i = 0; i < 10; i += 2) {
-      limb over = output[i] / 0x4000000l;
+      limb over = output[i] >> 26;
       output[i+1] += over;
-      output[i] -= over * 0x4000000l;
+      output[i] -= over << 26;
 
-      over = output[i+1] / 0x2000000;
+      over = output[i+1] >> 25;
       output[i+2] += over;
-      output[i+1] -= over * 0x2000000;
+      output[i+1] -= over << 25;
     }
-    output[0] += 19 * output[10];
+
+    output[0] += output[10] << 4;
+    output[0] += output[10] << 1;
+    output[0] += output[10];
   } while (output[10]);
 }
 
