@@ -293,12 +293,12 @@ static void freduce_coefficients(limb *output) {
 
   for (i = 0; i < 10; i += 2) {
     limb over = div_by_2_26(output[i]);
-    output[i+1] += over;
     output[i] -= over << 26;
+    output[i+1] += over;
 
     over = div_by_2_25(output[i+1]);
-    output[i+2] += over;
     output[i+1] -= over << 25;
+    output[i+2] += over;
   }
   output[0] += output[10] << 4;
   output[0] += output[10] << 1;
@@ -314,23 +314,23 @@ static void freduce_coefficients(limb *output) {
     {
       s32 over32;
       limb over = div_by_2_26(output[0]);
-      output[1] += over;
       output[0] -= over << 26;
+      output[1] += over;
 
       /* Now |output[1]| < 2^25 + 2^42/2^26. That fits in 32 bits. */
       over32 = div_s32_by_2_25(output[1]);
-      output[2] += over32;
       output[1] -= over32 << 25;
+      output[2] += over32;
     }
       
     for (i = 2; i < 10; i += 2) {
       s32 over = div_s32_by_2_26(output[i]);
-      output[i+1] += over;
       output[i] -= over << 26;
+      output[i+1] += over;
 
       over = div_s32_by_2_25(output[i+1]);
-      output[i+2] += over;
       output[i+1] -= over << 25;
+      output[i+2] += over;
     }
 
     output[0] += ((s32)output[10]) * 19;
