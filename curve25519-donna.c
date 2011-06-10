@@ -229,25 +229,111 @@ static void freduce_degree(limb *output) {
   output[0] += output[10];
 }
 
+#if (-1 & 3) == 3
+#define TWOS_COMPLEMENT
+#endif
+
+#if defined(TWOS_COMPLEMENT)
+/* return v / 2^26, using only shifts and adds. */
+static inline limb
+div_by_2_26(const limb v)
+{
+  /* High word of v; no shift needed*/
+  const uint32_t highword = ((uint64_t) v) >> 32;
+  /* Set to all 1s if v was negative; else set to 0s. */
+  const int32_t sign = ((int32_t) highword) >> 31;
+  /* Set to 0x3ffffff if v was negative; else set to 0. */
+  const int32_t roundoff = ((uint32_t) sign) >> 6;
+  /* Should return v / (1<<26) */
+  return (v + roundoff) >> 26;
+}
+
+/* return v / (2^25), using only shifts and adds. */
+static inline limb
+div_by_2_25(const limb v)
+{
+  /* High word of v; no shift needed*/
+  const uint32_t highword = ((uint64_t) v) >> 32;
+  /* Set to all 1s if v was negative; else set to 0s. */
+  const int32_t sign = ((int32_t) highword) >> 31;
+  /* Set to 0x1ffffff if v was negative; else set to 0. */
+  const int32_t roundoff = ((uint32_t) sign) >> 7;
+  /* Should return v / (1<<25) */
+  return (v + roundoff) >> 25;
+}
+
+static inline s32
+div_s32_by_2_26(const s32 v)
+{
+   const s32 roundoff = ((uint32_t)(v >> 31)) >> 6;
+   return (v + roundoff) >> 26;
+}
+
+static inline s32
+div_s32_by_2_25(const s32 v)
+{
+   const s32 roundoff = ((uint32_t)(v >> 31)) >> 7;
+   return (v + roundoff) >> 25;
+}
+#else /* !defined(TWOS_COMPLEMENT) */
+#define div_by_2_26(v) ((v) / 0x4000000l)
+#define div_by_2_25(v) ((v) / 0x2000000l)
+#define div_s32_by_2_26(v) (((s32)(v)) / 0x4000000l)
+#define div_s32_by_2_25(v) (((s32)(v)) / 0x2000000l)
+#endif
+
 /* Reduce all coefficients of the short form input so that |x| < 2^26.
  *
  * On entry: |output[i]| < 2^62
  */
 static void freduce_coefficients(limb *output) {
   unsigned i;
+
+  output[10] = 0;
+
+  for (i = 0; i < 10; i += 2) {
+    limb over = div_by_2_26(output[i]);
+    output[i] -= over << 26;
+    output[i+1] += over;
+
+    over = div_by_2_25(output[i+1]);
+    output[i+1] -= over << 25;
+    output[i+2] += over;
+  }
+  output[0] += output[10] << 4;
+  output[0] += output[10] << 1;
+  output[0] += output[10];
+
+  /* Once we've hit this point, |output[1..9]| < 2^26, and 
+   * output[0]<2^42.  We can use that to replace most of the 64-bit divides
+   * with 32-bit divides. */
+
   do {
     output[10] = 0;
 
-    for (i = 0; i < 10; i += 2) {
-      limb over = output[i] / 0x4000000l;
-      output[i+1] += over;
-      output[i] -= over * 0x4000000l;
+    {
+      s32 over32;
+      limb over = div_by_2_26(output[0]);
+      output[0] -= over << 26;
+      output[1] += over;
 
-      over = output[i+1] / 0x2000000;
-      output[i+2] += over;
-      output[i+1] -= over * 0x2000000;
+      /* Now |output[1]| < 2^25 + 2^42/2^26. That fits in 32 bits. */
+      over32 = div_s32_by_2_25(output[1]);
+      output[1] -= over32 << 25;
+      output[2] += over32;
     }
-    output[0] += 19 * output[10];
+      
+    for (i = 2; i < 10; i += 2) {
+      s32 over = div_s32_by_2_26(output[i]);
+      output[i] -= over << 26;
+      output[i+1] += over;
+
+      over = div_s32_by_2_25(output[i+1]);
+      output[i+1] -= over << 25;
+      output[i+2] += over;
+    }
+
+    output[0] += ((s32)output[10]) * 19;
   } while (output[10]);
 }
 
