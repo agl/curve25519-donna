@@ -229,11 +229,10 @@ static void freduce_degree(limb *output) {
   output[0] += output[10];
 }
 
-#if (-1 & 3) == 3
-#define TWOS_COMPLEMENT
+#if (-1 & 3) != 3
+#error "This code only works on a two's complement system"
 #endif
 
-#if defined(TWOS_COMPLEMENT)
 /* return v / 2^26, using only shifts and adds. */
 static inline limb
 div_by_2_26(const limb v)
@@ -275,12 +274,6 @@ div_s32_by_2_25(const s32 v)
    const s32 roundoff = ((uint32_t)(v >> 31)) >> 7;
    return (v + roundoff) >> 25;
 }
-#else /* !defined(TWOS_COMPLEMENT) */
-#define div_by_2_26(v) ((v) / 0x4000000l)
-#define div_by_2_25(v) ((v) / 0x2000000l)
-#define div_s32_by_2_26(v) (((s32)(v)) / 0x4000000l)
-#define div_s32_by_2_25(v) (((s32)(v)) / 0x2000000l)
-#endif
 
 /* Reduce all coefficients of the short form input so that |x| < 2^26.
  *
