@@ -521,7 +521,8 @@ static void fmonty(limb *x2, limb *z2,  /* output 2Q */
   fdifference(zz, xx);  // does zz = xx - zz
   memset(zzz + 10, 0, sizeof(limb) * 9);
   fscalar_product(zzz, zz, 121665);
-  freduce_degree(zzz);
+  /* No need to call freduce_degree here:
+     fscalar_product doesn't increase the degree of its input. */
   freduce_coefficients(zzz);
   fsum(zzz, xx);
   fproduct(z2, zz, zzz);
