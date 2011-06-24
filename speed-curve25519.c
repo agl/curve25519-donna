@@ -41,7 +41,7 @@ main() {
   }
   uint64_t end = time_now();
 
-  printf("%luus\n", (end - start) / 30000);
+  printf("%luus\n", (unsigned long) ((end - start) / 30000));
 
   return 0;
 }
