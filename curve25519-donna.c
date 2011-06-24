@@ -262,13 +262,6 @@ div_by_2_25(const limb v)
 }
 
 static inline s32
-div_s32_by_2_26(const s32 v)
-{
-   const s32 roundoff = ((uint32_t)(v >> 31)) >> 6;
-   return (v + roundoff) >> 26;
-}
-
-static inline s32
 div_s32_by_2_25(const s32 v)
 {
    const s32 roundoff = ((uint32_t)(v >> 31)) >> 7;
@@ -293,41 +286,33 @@ static void freduce_coefficients(limb *output) {
     output[i+1] -= over << 25;
     output[i+2] += over;
   }
+  /* Now |output[10]| < 2 ^ 38 and all other coefficients are reduced. */
   output[0] += output[10] << 4;
   output[0] += output[10] << 1;
   output[0] += output[10];
 
-  /* Once we've hit this point, |output[1..9]| < 2^26, and 
-   * output[0]<2^42.  We can use that to replace most of the 64-bit divides
-   * with 32-bit divides. */
+  output[10] = 0;
 
-  do {
-    output[10] = 0;
+  /* Now output[1..9] are reduced, and |output[0]| < 2^26 + 19 * 2^38
+   * So |over| will be no more than 77825  */
+  {
+    limb over = div_by_2_26(output[0]);
+    output[0] -= over << 26;
+    output[1] += over;
+  }
 
-    {
-      s32 over32;
-      limb over = div_by_2_26(output[0]);
-      output[0] -= over << 26;
-      output[1] += over;
+  /* Now output[0,2..9] are reduced, and |output[1]| < 2^25 + 77825
+   * So |over| will be no more than 1. */
+  {
+    /* output[1] fits in 32 bits, so we can use div_s32_by_2_25 here. */
+    s32 over32 = div_s32_by_2_25(output[1]);
+    output[1] -= over32 << 25;
+    output[2] += over32;
+  }
 
-      /* Now |output[1]| < 2^25 + 2^42/2^26. That fits in 32 bits. */
-      over32 = div_s32_by_2_25(output[1]);
-      output[1] -= over32 << 25;
-      output[2] += over32;
-    }
-      
-    for (i = 2; i < 10; i += 2) {
-      s32 over = div_s32_by_2_26(output[i]);
-      output[i] -= over << 26;
-      output[i+1] += over;
-
-      over = div_s32_by_2_25(output[i+1]);
-      output[i+1] -= over << 25;
-      output[i+2] += over;
-    }
-
-    output[0] += ((s32)output[10]) * 19;
-  } while (output[10]);
+  /* Finally, output[0,1,3..9] are reduced, and output[2] is "nearly reduced":
+   * we have |output[2]| <= 2^26.  This is good enough for all of our math,
+   * but it will require an extra freduce_coefficients before fcontract. */
 }
 
 /* A helpful wrapper around fproduct: output = in * in2.
@@ -536,7 +521,8 @@ static void fmonty(limb *x2, limb *z2,  /* output 2Q */
   fdifference(zz, xx);  // does zz = xx - zz
   memset(zzz + 10, 0, sizeof(limb) * 9);
   fscalar_product(zzz, zz, 121665);
-  freduce_degree(zzz);
+  /* No need to call freduce_degree here:
+     fscalar_product doesn't increase the degree of its input. */
   freduce_coefficients(zzz);
   fsum(zzz, xx);
   fproduct(z2, zz, zzz);
@@ -684,6 +670,7 @@ curve25519_donna(u8 *mypublic, const u8 *secret, const u8 *basepoint) {
   cmult(x, z, e, bp);
   crecip(zmone, z);
   fmul(z, x, zmone);
+  freduce_coefficients(z);
   fcontract(mypublic, z);
   return 0;
 }
