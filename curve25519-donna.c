@@ -417,6 +417,10 @@ fexpand(limb *output, const u8 *input) {
 #undef F
 }
 
+#if (-32 >> 1) != -16
+#error "This code only works when >> does sign-extension on negative numbers"
+#endif
+
 /* Take a fully reduced polynomial form number and contract it into a
  * little-endian, 32-byte array
  */
@@ -427,21 +431,24 @@ fcontract(u8 *output, limb *input) {
   do {
     for (i = 0; i < 9; ++i) {
       if ((i & 1) == 1) {
-        while (input[i] < 0) {
-          input[i] += 0x2000000;
-          input[i + 1]--;
-        }
+        /* This calculation is a time-invariant way to make input[i] positive
+           by borrowing from the next-larger limb.
+        */
+        const limb mask = input[i]>>63;
+        const limb carry = -((input[i] & mask) >> 25);
+        input[i] += carry << 25;
+        input[i+1] -= carry;
       } else {
-        while (input[i] < 0) {
-          input[i] += 0x4000000;
-          input[i + 1]--;
-        }
+        const limb mask = input[i]>>63;
+        const limb carry = -((input[i] & mask) >> 26);
+        input[i] += carry << 26;
+        input[i+1] -= carry;
       }
     }
-    while (input[9] < 0) {
-      input[9] += 0x2000000;
-      input[0] -= 19;
-    }
+    const limb mask = input[9]>>63;
+    const limb carry = -((input[9] & mask) >> 25);
+    input[9] += carry << 25;
+    input[0] -= carry * 19;
   } while (input[0] < 0);
 
   input[1] <<= 2;
