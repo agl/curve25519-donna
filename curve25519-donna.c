@@ -541,19 +541,21 @@ static void fmonty(limb *x2, limb *z2,  /* output 2Q */
  * them unchanged if 'iswap' is 0.  Runs in data-invariant time to avoid
  * side-channel attacks.
  *
- * NOTE that this function requires that 'iswap' be 1 or 0; other values
- * give wrong results.  Also, the two limb arrays must be in reduced form:
- * the values in a[10..19] or b[10..19] aren't swapped.
+ * NOTE that this function requires that 'iswap' be 1 or 0; other values give
+ * wrong results.  Also, the two limb arrays must be in reduced-coefficient,
+ * reduced-degree form: the values in a[10..19] or b[10..19] aren't swapped,
+ * and all all values in a[0..9],b[0..9] must have magnitude less than
+ * INT32_MAX.
  */
 static void
 swap_conditional(limb a[19], limb b[19], limb iswap) {
   unsigned i;
-  const limb swap = -iswap;
+  const s32 swap = -iswap;
 
   for (i = 0; i < 10; ++i) {
-    const limb x = swap & (a[i] ^ b[i]);
-    a[i] ^= x;
-    b[i] ^= x;
+    const s32 x = swap & ( ((s32)a[i]) ^ ((s32)b[i]) );
+    a[i] = ((s32)a[i]) ^ x;
+    b[i] = ((s32)b[i]) ^ x;
   }
 }
 
