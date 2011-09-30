@@ -530,6 +530,18 @@ static void fmonty(limb *x2, limb *z2,  /* output 2Q */
   freduce_coefficients(z2);
 }
 
+static void
+swap_conditional(limb a[19], limb b[19], limb iswap) {
+  unsigned i;
+  const limb swap = -iswap;
+
+  for (i = 0; i < 19; ++i) {
+    const limb x = swap & (a[i] ^ b[i]);
+    a[i] ^= x;
+    b[i] ^= x;
+  }
+}
+
 /* Calculates nQ where Q is the x-coordinate of a point on the curve
  *
  *   resultx/resultz: the x coordinate of the resulting curve point (short form)
@@ -550,19 +562,17 @@ cmult(limb *resultx, limb *resultz, const u8 *n, const limb *q) {
   for (i = 0; i < 32; ++i) {
     u8 byte = n[31 - i];
     for (j = 0; j < 8; ++j) {
-      if (byte & 0x80) {
-        fmonty(nqpqx2, nqpqz2,
-               nqx2, nqz2,
-               nqpqx, nqpqz,
-               nqx, nqz,
-               q);
-      } else {
-        fmonty(nqx2, nqz2,
-               nqpqx2, nqpqz2,
-               nqx, nqz,
-               nqpqx, nqpqz,
-               q);
-      }
+      const limb bit = byte >> 7;
+
+      swap_conditional(nqx, nqpqx, bit);
+      swap_conditional(nqz, nqpqz, bit);
+      fmonty(nqx2, nqz2,
+             nqpqx2, nqpqz2,
+             nqx, nqz,
+             nqpqx, nqpqz,
+             q);
+      swap_conditional(nqx2, nqpqx2, bit);
+      swap_conditional(nqz2, nqpqz2, bit);
 
       t = nqx;
       nqx = nqx2;
