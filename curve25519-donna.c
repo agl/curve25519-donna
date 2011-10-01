@@ -435,21 +435,21 @@ fcontract(u8 *output, limb *input) {
         /* This calculation is a time-invariant way to make input[i] positive
            by borrowing from the next-larger limb.
         */
-        const limb mask = input[i]>>63;
-        const limb carry = -((input[i] & mask) >> 25);
-        input[i] += carry << 25;
-        input[i+1] -= carry;
+        const s32 mask = (s32)(input[i]) >> 31;
+        const s32 carry = -(((s32)(input[i]) & mask) >> 25);
+        input[i] = (s32)(input[i]) + (carry << 25);
+        input[i+1] = (s32)(input[i+1]) - carry;
       } else {
-        const limb mask = input[i]>>63;
-        const limb carry = -((input[i] & mask) >> 26);
-        input[i] += carry << 26;
-        input[i+1] -= carry;
+        const s32 mask = (s32)(input[i]) >> 31;
+        const s32 carry = -(((s32)(input[i]) & mask) >> 26);
+        input[i] = (s32)(input[i]) + (carry << 26);
+        input[i+1] = (s32)(input[i+1]) - carry;
       }
     }
-    const limb mask = input[9]>>63;
-    const limb carry = -((input[9] & mask) >> 25);
-    input[9] += carry << 25;
-    input[0] -= carry * 19;
+    const s32 mask = (s32)(input[9]) >> 31;
+    const s32 carry = -(((s32)(input[9]) & mask) >> 25);
+    input[9] = (s32)(input[9]) + (carry << 25);
+    input[0] = (s32)(input[0]) - (carry * 19);
   }
 
   /* The first borrow-propagation pass above ended with every limb
@@ -462,10 +462,10 @@ fcontract(u8 *output, limb *input) {
      were all zero.  In that case, input[1] is now 2^25 - 1, and this
      last borrow-propagation step will leave input[1] non-negative.
   */
-  const limb mask = input[0]>>63;
-  const limb carry = -((input[0] & mask) >> 26);
-  input[0] += carry << 26;
-  input[1] -= carry;
+  const s32 mask = (s32)(input[0]) >> 31;
+  const s32 carry = -(((s32)(input[0]) & mask) >> 26);
+  input[0] = (s32)(input[0]) + (carry << 26);
+  input[1] = (s32)(input[1]) - carry;
 
   /* Both passes through the above loop, plus the last 0-to-1 step, are
      necessary: if input[9] is -1 and input[0] through input[8] are 0,
