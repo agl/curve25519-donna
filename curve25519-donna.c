@@ -427,8 +427,9 @@ fexpand(limb *output, const u8 *input) {
 static void
 fcontract(u8 *output, limb *input) {
   int i;
+  int j;
 
-  do {
+  for (j = 0; j < 2; ++j) {
     for (i = 0; i < 9; ++i) {
       if ((i & 1) == 1) {
         /* This calculation is a time-invariant way to make input[i] positive
@@ -449,7 +450,27 @@ fcontract(u8 *output, limb *input) {
     const limb carry = -((input[9] & mask) >> 25);
     input[9] += carry << 25;
     input[0] -= carry * 19;
-  } while (input[0] < 0);
+  }
+
+  /* The first borrow-propagation pass above ended with every limb
+     except (possibly) input[0] non-negative.
+
+     Since each input limb except input[0] is decreased by at most 1
+     by a borrow-propagation pass, the second borrow-propagation pass
+     could only have wrapped around to decrease input[0] again if the
+     first pass left input[0] negative *and* input[1] through input[9]
+     were all zero.  In that case, input[1] is now 2^25 - 1, and this
+     last borrow-propagation step will leave input[1] non-negative.
+  */
+  const limb mask = input[0]>>63;
+  const limb carry = -((input[0] & mask) >> 26);
+  input[0] += carry << 26;
+  input[1] -= carry;
+
+  /* Both passes through the above loop, plus the last 0-to-1 step, are
+     necessary: if input[9] is -1 and input[0] through input[8] are 0,
+     negative values will remain in the array until the end.
+   */
 
   input[1] <<= 2;
   input[2] <<= 3;
