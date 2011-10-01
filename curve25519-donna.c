@@ -81,7 +81,7 @@ static void fdifference(limb *output, const limb *in) {
   }
 }
 
-/* Multiply a number my a scalar: output = in * scalar */
+/* Multiply a number by a scalar: output = in * scalar */
 static void fscalar_product(limb *output, const limb *in, const limb scalar) {
   unsigned i;
   for (i = 0; i < 10; ++i) {
