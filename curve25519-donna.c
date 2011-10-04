@@ -417,6 +417,10 @@ fexpand(limb *output, const u8 *input) {
 #undef F
 }
 
+#if (-32 >> 1) != -16
+#error "This code only works when >> does sign-extension on negative numbers"
+#endif
+
 /* Take a fully reduced polynomial form number and contract it into a
  * little-endian, 32-byte array
  */
@@ -427,21 +431,24 @@ fcontract(u8 *output, limb *input) {
   do {
     for (i = 0; i < 9; ++i) {
       if ((i & 1) == 1) {
-        while (input[i] < 0) {
-          input[i] += 0x2000000;
-          input[i + 1]--;
-        }
+        /* This calculation is a time-invariant way to make input[i] positive
+           by borrowing from the next-larger limb.
+        */
+        const limb mask = input[i]>>63;
+        const limb carry = -((input[i] & mask) >> 25);
+        input[i] += carry << 25;
+        input[i+1] -= carry;
       } else {
-        while (input[i] < 0) {
-          input[i] += 0x4000000;
-          input[i + 1]--;
-        }
+        const limb mask = input[i]>>63;
+        const limb carry = -((input[i] & mask) >> 26);
+        input[i] += carry << 26;
+        input[i+1] -= carry;
       }
     }
-    while (input[9] < 0) {
-      input[9] += 0x2000000;
-      input[0] -= 19;
-    }
+    const limb mask = input[9]>>63;
+    const limb carry = -((input[9] & mask) >> 25);
+    input[9] += carry << 25;
+    input[0] -= carry * 19;
   } while (input[0] < 0);
 
   input[1] <<= 2;
@@ -530,6 +537,28 @@ static void fmonty(limb *x2, limb *z2,  /* output 2Q */
   freduce_coefficients(z2);
 }
 
+/* Conditionally swap two reduced-form limb arrays if 'iswap' is 1, but leave
+ * them unchanged if 'iswap' is 0.  Runs in data-invariant time to avoid
+ * side-channel attacks.
+ *
+ * NOTE that this function requires that 'iswap' be 1 or 0; other values give
+ * wrong results.  Also, the two limb arrays must be in reduced-coefficient,
+ * reduced-degree form: the values in a[10..19] or b[10..19] aren't swapped,
+ * and all all values in a[0..9],b[0..9] must have magnitude less than
+ * INT32_MAX.
+ */
+static void
+swap_conditional(limb a[19], limb b[19], limb iswap) {
+  unsigned i;
+  const s32 swap = -iswap;
+
+  for (i = 0; i < 10; ++i) {
+    const s32 x = swap & ( ((s32)a[i]) ^ ((s32)b[i]) );
+    a[i] = ((s32)a[i]) ^ x;
+    b[i] = ((s32)b[i]) ^ x;
+  }
+}
+
 /* Calculates nQ where Q is the x-coordinate of a point on the curve
  *
  *   resultx/resultz: the x coordinate of the resulting curve point (short form)
@@ -550,19 +579,17 @@ cmult(limb *resultx, limb *resultz, const u8 *n, const limb *q) {
   for (i = 0; i < 32; ++i) {
     u8 byte = n[31 - i];
     for (j = 0; j < 8; ++j) {
-      if (byte & 0x80) {
-        fmonty(nqpqx2, nqpqz2,
-               nqx2, nqz2,
-               nqpqx, nqpqz,
-               nqx, nqz,
-               q);
-      } else {
-        fmonty(nqx2, nqz2,
-               nqpqx2, nqpqz2,
-               nqx, nqz,
-               nqpqx, nqpqz,
-               q);
-      }
+      const limb bit = byte >> 7;
+
+      swap_conditional(nqx, nqpqx, bit);
+      swap_conditional(nqz, nqpqz, bit);
+      fmonty(nqx2, nqz2,
+             nqpqx2, nqpqz2,
+             nqx, nqz,
+             nqpqx, nqpqz,
+             q);
+      swap_conditional(nqx2, nqpqx2, bit);
+      swap_conditional(nqz2, nqpqz2, bit);
 
       t = nqx;
       nqx = nqx2;
