@@ -3,7 +3,7 @@ targets: curve25519-donna.a curve25519-donna-c64.a
 test: test-donna test-donna-c64
 
 clean:
-	rm -f *.o *.a *.pp test-curve25519-donna test-curve25519-donna-c64 speed-curve25519-donna speed-curve25519-donna-64
+	rm -f *.o *.a *.pp test-curve25519-donna test-curve25519-donna-c64 speed-curve25519-donna speed-curve25519-donna-c64
 
 curve25519-donna.a: curve25519-donna.o
 	ar -rc curve25519-donna.a curve25519-donna.o
