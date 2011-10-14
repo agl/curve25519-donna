@@ -17,7 +17,6 @@ pycurve25519_makeprivate(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "t#:clamp", &in1, &in1len))
         return NULL;
     if (in1len != 32) {
-        printf("LEN is %ld\n", in1len);
         PyErr_SetString(PyExc_ValueError, "input must be 32-byte string");
         return NULL;
     }
