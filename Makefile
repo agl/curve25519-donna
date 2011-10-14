@@ -7,12 +7,14 @@ clean:
 
 curve25519-donna.a: curve25519-donna.o
 	ar -rc curve25519-donna.a curve25519-donna.o
+	ranlib curve25519-donna.a
 
 curve25519-donna.o: curve25519-donna.c
 	gcc -O2 -c curve25519-donna.c -Wall -m32 -ggdb
 
 curve25519-donna-c64.a: curve25519-donna-c64.o
 	ar -rc curve25519-donna-c64.a curve25519-donna-c64.o
+	ranlib curve25519-donna-c64.a
 
 curve25519-donna-c64.o: curve25519-donna-c64.c
 	gcc -O2 -c curve25519-donna-c64.c -Wall
