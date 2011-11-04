@@ -6,13 +6,6 @@
 typedef int Py_ssize_t;
 #endif
 
-/* This is required for compatibility with Python 2. */
-#if PY_MAJOR_VERSION >= 3
-	#define y "y"
-#else
-	#define y "t"
-#endif
-
 int curve25519_donna(u_int8_t *mypublic, 
                      const u_int8_t *secret, const u_int8_t *basepoint);
 
@@ -21,7 +14,7 @@ pycurve25519_makeprivate(PyObject *self, PyObject *args)
 {
     char *in1;
     Py_ssize_t in1len;
-    if (!PyArg_ParseTuple(args, y"#:clamp", &in1, &in1len))
+    if (!PyArg_ParseTuple(args, "y#:clamp", &in1, &in1len))
         return NULL;
     if (in1len != 32) {
         PyErr_SetString(PyExc_ValueError, "input must be 32-byte string");
@@ -40,7 +33,7 @@ pycurve25519_makepublic(PyObject *self, PyObject *args)
     char mypublic[32];
     char basepoint[32] = {9};
     Py_ssize_t privatelen;
-    if (!PyArg_ParseTuple(args, y"#:makepublic", &private, &privatelen))
+    if (!PyArg_ParseTuple(args, "y#:makepublic", &private, &privatelen))
         return NULL;
     if (privatelen != 32) {
         PyErr_SetString(PyExc_ValueError, "input must be 32-byte string");
@@ -56,7 +49,7 @@ pycurve25519_makeshared(PyObject *self, PyObject *args)
     const char *myprivate, *theirpublic;
     char shared_key[32];
     Py_ssize_t myprivatelen, theirpubliclen;
-    if (!PyArg_ParseTuple(args, y"#"y"#:generate",
+    if (!PyArg_ParseTuple(args, "y#y#:generate",
                           &myprivate, &myprivatelen, &theirpublic, &theirpubliclen))
         return NULL;
     if (myprivatelen != 32) {
@@ -83,22 +76,22 @@ curve25519_functions[] = {
 #if PY_MAJOR_VERSION >= 3
     static struct PyModuleDef
     curve25519_module = {
-        PyModuleDef_HEAD_INIT,
-        "_curve25519",
-        NULL,
-        NULL,
-        curve25519_functions,
+    	PyModuleDef_HEAD_INIT,
+    	"_curve25519",
+    	NULL,
+    	NULL,
+    	curve25519_functions,
     };
 
     PyObject *
     PyInit__curve25519(void)
     {
-        return PyModule_Create(&curve25519_module);
+    	return PyModule_Create(&curve25519_module);
     }
 #else
     PyMODINIT_FUNC
     init_curve25519(void)
     {
-          (void)Py_InitModule("_curve25519", curve25519_functions);
+    	  (void)Py_InitModule("_curve25519", curve25519_functions);
     }
 #endif
