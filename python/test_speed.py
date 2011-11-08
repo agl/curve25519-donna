@@ -37,8 +37,8 @@ for i in range(count):
     shared = p.get_shared_key(pub2) #, hashfunc=nohash)
     elapsed_get_shared += time() - start
 
-print "get_public: %s" % abbreviate_time(elapsed_get_public / count)
-print "get_shared: %s" % abbreviate_time(elapsed_get_shared / count)
+print("get_public: %s" % abbreviate_time(elapsed_get_public / count))
+print("get_shared: %s" % abbreviate_time(elapsed_get_shared / count))
 
 # these take about 560us-570us each (with the default compiler settings, -Os)
 # on my laptop, same with -O2

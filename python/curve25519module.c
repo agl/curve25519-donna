@@ -1,9 +1,16 @@
-
 /* tell python that PyArg_ParseTuple(t#) means Py_ssize_t, not int */
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
+#include <bytesobject.h>
 #if (PY_VERSION_HEX < 0x02050000)
 typedef int Py_ssize_t;
+#endif
+
+/* This is required for compatibility with Python 2. */
+#if PY_MAJOR_VERSION >= 3
+	#define y "y"
+#else
+	#define y "t"
 #endif
 
 int curve25519_donna(u_int8_t *mypublic, 
@@ -12,9 +19,9 @@ int curve25519_donna(u_int8_t *mypublic,
 static PyObject *
 pycurve25519_makeprivate(PyObject *self, PyObject *args)
 {
-    u_int8_t *in1;
+    char *in1;
     Py_ssize_t in1len;
-    if (!PyArg_ParseTuple(args, "t#:clamp", &in1, &in1len))
+    if (!PyArg_ParseTuple(args, y"#:clamp", &in1, &in1len))
         return NULL;
     if (in1len != 32) {
         PyErr_SetString(PyExc_ValueError, "input must be 32-byte string");
@@ -23,33 +30,33 @@ pycurve25519_makeprivate(PyObject *self, PyObject *args)
     in1[0] &= 248;
     in1[31] &= 127;
     in1[31] |= 64;
-    return PyString_FromStringAndSize((char *)in1, 32);
+    return PyBytes_FromStringAndSize((char *)in1, 32);
 }
 
 static PyObject *
 pycurve25519_makepublic(PyObject *self, PyObject *args)
 {
-    const u_int8_t *private;
-    u_int8_t mypublic[32];
-    u_int8_t basepoint[32] = {9};
+    const char *private;
+    char mypublic[32];
+    char basepoint[32] = {9};
     Py_ssize_t privatelen;
-    if (!PyArg_ParseTuple(args, "t#:makepublic", &private, &privatelen))
+    if (!PyArg_ParseTuple(args, y"#:makepublic", &private, &privatelen))
         return NULL;
     if (privatelen != 32) {
         PyErr_SetString(PyExc_ValueError, "input must be 32-byte string");
         return NULL;
     }
     curve25519_donna(mypublic, private, basepoint);
-    return PyString_FromStringAndSize((char *)mypublic, 32);
+    return PyBytes_FromStringAndSize((char *)mypublic, 32);
 }
 
 static PyObject *
 pycurve25519_makeshared(PyObject *self, PyObject *args)
 {
-    const u_int8_t *myprivate, *theirpublic;
-    u_int8_t shared_key[32];
+    const char *myprivate, *theirpublic;
+    char shared_key[32];
     Py_ssize_t myprivatelen, theirpubliclen;
-    if (!PyArg_ParseTuple(args, "t#t#:generate",
+    if (!PyArg_ParseTuple(args, y"#"y"#:generate",
                           &myprivate, &myprivatelen, &theirpublic, &theirpubliclen))
         return NULL;
     if (myprivatelen != 32) {
@@ -61,19 +68,37 @@ pycurve25519_makeshared(PyObject *self, PyObject *args)
         return NULL;
     }
     curve25519_donna(shared_key, myprivate, theirpublic);
-    return PyString_FromStringAndSize((char *)shared_key, 32);
+    return PyBytes_FromStringAndSize((char *)shared_key, 32);
 }
-    
 
-static PyMethodDef curve25519_functions[] = {
+
+static PyMethodDef
+curve25519_functions[] = {
     {"make_private", pycurve25519_makeprivate, METH_VARARGS, "data->private"},
     {"make_public", pycurve25519_makepublic, METH_VARARGS, "private->public"},
     {"make_shared", pycurve25519_makeshared, METH_VARARGS, "private+public->shared"},
     {NULL, NULL, 0, NULL},
 };
 
-PyMODINIT_FUNC
-init_curve25519(void)
-{
-    (void)Py_InitModule("_curve25519", curve25519_functions);
-}
+#if PY_MAJOR_VERSION >= 3
+    static struct PyModuleDef
+    curve25519_module = {
+        PyModuleDef_HEAD_INIT,
+        "_curve25519",
+        NULL,
+        NULL,
+        curve25519_functions,
+    };
+
+    PyObject *
+    PyInit__curve25519(void)
+    {
+        return PyModule_Create(&curve25519_module);
+    }
+#else
+    PyMODINIT_FUNC
+    init_curve25519(void)
+    {
+          (void)Py_InitModule("_curve25519", curve25519_functions);
+    }
+#endif
