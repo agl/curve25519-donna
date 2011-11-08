@@ -1,10 +1,10 @@
 #! /usr/bin/python
 
-import subprocess
+from subprocess import Popen, PIPE
 from distutils.core import setup, Extension
 
-version = subprocess.Popen(["git", "describe", "--tags"],
-                           stdout=subprocess.PIPE).communicate()[0].strip()
+version = Popen(["git", "describe", "--tags"], stdout=PIPE).communicate()[0]\
+          .strip().decode("utf8")
 
 ext_modules = [Extension("_curve25519",
                          ["curve25519module.c", "../curve25519-donna.c"],
