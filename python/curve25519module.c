@@ -1,20 +1,21 @@
 /* tell python that PyArg_ParseTuple(t#) means Py_ssize_t, not int */
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
-#include <bytesobject.h>
 #if (PY_VERSION_HEX < 0x02050000)
-typedef int Py_ssize_t;
+	typedef int Py_ssize_t;
 #endif
 
 /* This is required for compatibility with Python 2. */
 #if PY_MAJOR_VERSION >= 3
+	#include <bytesobject.h> 
 	#define y "y"
 #else
+	#define PyBytes_FromStringAndSize PyString_FromStringAndSize
 	#define y "t"
 #endif
 
-int curve25519_donna(u_int8_t *mypublic, 
-                     const u_int8_t *secret, const u_int8_t *basepoint);
+int curve25519_donna(char *mypublic, 
+                     const char *secret, const char *basepoint);
 
 static PyObject *
 pycurve25519_makeprivate(PyObject *self, PyObject *args)
