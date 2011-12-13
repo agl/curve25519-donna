@@ -7,7 +7,7 @@ import os
 # public keys that way.
 
 def _hash_shared(shared):
-    return sha256(b"curve25519-shared:"+shared).digest()
+    return sha256("curve25519-shared:"+shared).digest()
 
 class Private:
     def __init__(self, secret=None, seed=None):
@@ -15,10 +15,10 @@ class Private:
             if seed is None:
                 secret = os.urandom(32)
             else:
-                secret = sha256(b"curve25519-private:"+seed).digest()
+                secret = sha256("curve25519-private:"+seed).digest()
         else:
             assert seed is None, "provide secret, seed, or neither, not both"
-        if not isinstance(secret, bytes) or len(secret) != 32:
+        if not isinstance(secret, str) or len(secret) != 32:
             raise TypeError("secret= must be 32-byte string")
         self.private = _curve25519.make_private(secret)
 
@@ -38,9 +38,10 @@ class Private:
 
 class Public:
     def __init__(self, public):
-        assert isinstance(public, bytes)
+        assert isinstance(public, str)
         assert len(public) == 32
         self.public = public
 
     def serialize(self):
         return self.public
+
