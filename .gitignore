@@ -8,3 +8,5 @@
 /build
 *.o
 *.pyc
+/dist
+/MANIFEST
