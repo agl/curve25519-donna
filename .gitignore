@@ -5,6 +5,6 @@
 /test-curve25519-donna-c64
 /speed-curve25519-donna-c64
 /test-sc-curve25519-donna-c64
-/python/build
+/build
 *.o
 *.pyc

@@ -1,4 +1,4 @@
-import _curve25519
+from . import _curve25519
 from hashlib import sha256
 import os
 
