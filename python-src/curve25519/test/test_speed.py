@@ -1,7 +1,7 @@
 #! /usr/bin/python
 
 from time import time
-from curve25519 import Private, Public
+from curve25519 import Private
 
 count = 10000
 elapsed_get_public = 0.0
