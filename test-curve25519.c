@@ -35,7 +35,7 @@ main()
   int loop;
   int i;
 
-  for (loop = 0;loop < 1000000000;++loop) {
+  for (loop = 0;loop < 10000;++loop) {
     doit(e1k,e1,k);
     doit(e2e1k,e2,e1k);
     doit(e2k,e2,k);
