@@ -10,6 +10,7 @@ Tiny modifications by agl
 
 extern void curve25519_donna(unsigned char *output, const unsigned char *a,
                              const unsigned char *b);
+void doit(unsigned char *ek,unsigned char *e,unsigned char *k);
 
 void doit(unsigned char *ek,unsigned char *e,unsigned char *k)
 {
