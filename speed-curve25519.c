@@ -7,6 +7,7 @@
 typedef uint8_t u8;
 
 extern void curve25519_donna(u8 *output, const u8 *secret, const u8 *bp);
+extern void curve25519_base_donna(u8 *output, const u8 *secret);
 
 static uint64_t
 time_now() {
@@ -41,6 +42,14 @@ main() {
   start = time_now();
   for (i = 0; i < 30000; ++i) {
     curve25519_donna(mypublic, mysecret, basepoint);
+  }
+  end = time_now();
+
+  printf("%luus\n", (unsigned long) ((end - start) / 30000));
+
+  start = time_now();
+  for (i = 0; i < 30000; ++i) {
+    curve25519_base_donna(mypublic, mysecret);
   }
   end = time_now();
 

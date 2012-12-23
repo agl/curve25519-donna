@@ -30,6 +30,8 @@ unsigned char e1[32] = {3};
 unsigned char e2[32] = {5};
 unsigned char k[32] = {9};
 
+const unsigned char bp[32] = {9};
+
 int
 main()
 {
