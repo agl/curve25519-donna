@@ -49,6 +49,10 @@
 #include <string.h>
 #include <stdint.h>
 
+#ifdef _MSC_VER
+#define inline __inline
+#endif
+
 typedef uint8_t u8;
 typedef int32_t s32;
 typedef int64_t limb;
