@@ -1,0 +1,68 @@
+CFLAGS=-Wmissing-prototypes -Wdeclaration-after-statement -O2 -Wall
+CC=clang
+
+
+targets: curve25519-donna.a curve25519-donna-c64.a
+
+test: test-donna test-donna-c64
+
+
+clean:
+	rm -f java-src/*.class java-src/*.jnilib *.dylib *.o *.a *.pp test-curve25519-donna test-curve25519-donna-c64 speed-curve25519-donna speed-curve25519-donna-c64
+
+curve25519-donna.a: curve25519-donna.o
+	ar -rc curve25519-donna.a curve25519-donna.o
+	ranlib curve25519-donna.a
+
+
+##### OSX dynamic library (32- & 64-bit)
+
+curve25519donna.dylib: curve25519-donna.a curve25519-donna-c64.a
+	$(CC) -m32 -fpic -shared -Wl,-all_load curve25519-donna.a -Wl,-all_load -o libcurve25519donna.dylib
+	$(CC) -fpic -shared -Wl,-all_load curve25519-donna-c64.a -Wl,-all_load -o libcurve25519donna_64.dylib
+
+##### OSX/Java section hence
+
+# Java JNI - compiled for OSX (32- & 64-bit)
+Curve25519Donna.class:
+	cd java-src; javah -jni Curve25519Donna; cd ..
+	cd java-src; javac Curve25519Donna.java; cd ..
+
+Curve25519Donna.jnilib: curve25519-donna.a curve25519-donna-c64.a Curve25519Donna.class
+	@echo "Building 32-bit..."
+	clang -o java-src/libCurve25519Donna.jnilib $(CFLAGS) -lc -shared -m32 -I /System/Library/Frameworks/JavaVM.framework/Headers curve25519-donna.o java-src/Curve25519Donna.c
+	@echo "Building 64-bit..."
+	clang -o java-src/libCurve25519Donna_64.jnilib $(CFLAGS) -lc -shared -I /System/Library/Frameworks/JavaVM.framework/Headers curve25519-donna-c64.o java-src/Curve25519Donna.c
+
+##### OSX/Java section end
+
+curve25519-donna.o: curve25519-donna.c
+	$(CC) -c curve25519-donna.c $(CFLAGS) -m32
+
+curve25519-donna-c64.a: curve25519-donna-c64.o
+	ar -rc curve25519-donna-c64.a curve25519-donna-c64.o
+	ranlib curve25519-donna-c64.a
+
+curve25519-donna-c64.o: curve25519-donna-c64.c
+	$(CC) -c curve25519-donna-c64.c $(CFLAGS)
+
+test-donna: test-curve25519-donna
+	./test-curve25519-donna | head -123456 | tail -1
+
+test-donna-c64: test-curve25519-donna-c64
+	./test-curve25519-donna-c64 | head -123456 | tail -1
+
+test-curve25519-donna: test-curve25519.c curve25519-donna.a
+	$(CC) -o test-curve25519-donna test-curve25519.c curve25519-donna.a $(CFLAGS) -m32
+
+test-curve25519-donna-c64: test-curve25519.c curve25519-donna-c64.a
+	$(CC) -o test-curve25519-donna-c64 test-curve25519.c curve25519-donna-c64.a $(CFLAGS)
+
+speed-curve25519-donna: speed-curve25519.c curve25519-donna.a
+	$(CC) -o speed-curve25519-donna speed-curve25519.c curve25519-donna.a $(CFLAGS) -m32
+
+speed-curve25519-donna-c64: speed-curve25519.c curve25519-donna-c64.a
+	$(CC) -o speed-curve25519-donna-c64 speed-curve25519.c curve25519-donna-c64.a $(CFLAGS)
+
+test-sc-curve25519-donna-c64: test-sc-curve25519.c curve25519-donna-c64.a
+	$(CC) -o test-sc-curve25519-donna-c64 -O test-sc-curve25519.c curve25519-donna-c64.a test-sc-curve25519.s $(CFLAGS)
