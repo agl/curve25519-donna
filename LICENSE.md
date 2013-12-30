@@ -38,7 +38,7 @@ Derived from public domain C code by Daniel J. Bernstein <djb@cr.yp.to>
 More information about curve25519 can be found here
   http://cr.yp.to/ecdh.html
 
-djb's sample implementation of curve25519 is written in a special assembly 
+djb's sample implementation of curve25519 is written in a special assembly
 language called qhasm and uses the floating point registers.
 
 This is, almost, a clean room reimplementation from the curve25519 paper. It
