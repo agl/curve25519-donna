@@ -219,7 +219,7 @@ fexpand(limb *output, const u8 *in) {
   output[1] = (load_limb(in+6) >> 3) & 0x7ffffffffffff;
   output[2] = (load_limb(in+12) >> 6) & 0x7ffffffffffff;
   output[3] = (load_limb(in+19) >> 1) & 0x7ffffffffffff;
-  output[4] = (load_limb(in+24) >> 12) & 0xfffffffffffff;
+  output[4] = (load_limb(in+24) >> 12) & 0x7ffffffffffff;
 }
 
 /* Take a fully reduced polynomial form number and contract it into a

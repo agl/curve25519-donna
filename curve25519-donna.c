@@ -417,7 +417,7 @@ fexpand(limb *output, const u8 *input) {
   F(6, 19, 1, 0x3ffffff);
   F(7, 22, 3, 0x1ffffff);
   F(8, 25, 4, 0x3ffffff);
-  F(9, 28, 6, 0x3ffffff);
+  F(9, 28, 6, 0x1ffffff);
 #undef F
 }
 
