@@ -27,6 +27,7 @@ main() {
   unsigned char mysecret[32], mypublic[32];
   unsigned i;
   uint64_t start, end;
+  const unsigned iterations = 30000;
 
   memset(mysecret, 42, 32);
   mysecret[0] &= 248;
@@ -39,12 +40,12 @@ main() {
   }
 
   start = time_now();
-  for (i = 0; i < 30000; ++i) {
+  for (i = 0; i < iterations; ++i) {
     curve25519_donna(mypublic, mysecret, basepoint);
   }
   end = time_now();
 
-  printf("%luus\n", (unsigned long) ((end - start) / 30000));
+  printf("%lu us, %g op/s\n", (unsigned long) ((end - start) / iterations), iterations*1000000. / (end - start) );
 
   return 0;
 }
