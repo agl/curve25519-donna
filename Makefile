@@ -39,5 +39,8 @@ speed-curve25519-donna: speed-curve25519.c curve25519-donna.a
 speed-curve25519-donna-c64: speed-curve25519.c curve25519-donna-c64.a
 	gcc -o speed-curve25519-donna-c64 speed-curve25519.c curve25519-donna-c64.a $(CFLAGS)
 
+speed-curve25519-donna-c64-threaded: speed-curve25519-threaded.c curve25519-donna-c64.a
+	gcc -o speed-curve25519-donna-c64-threaded speed-curve25519-threaded.c curve25519-donna-c64.a $(CFLAGS) -lpthread
+
 test-sc-curve25519-donna-c64: test-sc-curve25519.c curve25519-donna-c64.a
 	gcc -o test-sc-curve25519-donna-c64 -O test-sc-curve25519.c curve25519-donna-c64.a test-sc-curve25519.s $(CFLAGS)

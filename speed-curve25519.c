@@ -27,7 +27,7 @@ main() {
   unsigned char mysecret[32], mypublic[32];
   unsigned i;
   uint64_t start, end;
-  const unsigned iterations = 30000;
+  const unsigned iterations = 100000;
 
   memset(mysecret, 42, 32);
   mysecret[0] &= 248;
