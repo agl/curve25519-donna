@@ -10,12 +10,14 @@ typedef uint8_t u8;
 
 typedef struct thr_state {
   unsigned i;
+  pthread_t thread_id;
   unsigned char *secret;
   struct timespec waittime;
   volatile unsigned *all_start;
   float op_sec;
   float total_sec;
   unsigned exited;
+  
 } thr_state;
 
 extern void curve25519_donna(u8 *output, const u8 *secret, const u8 *bp);
@@ -33,7 +35,7 @@ time_now() {
   return ret;
 }
 
-#define THREAD_COUNT 4
+#define DEFAULT_THREAD_COUNT 4
 
 static const unsigned char basepoint[32] = {9};
 
@@ -70,11 +72,27 @@ int
 main() {
   unsigned char mysecret[32];
   unsigned i;
-  pthread_t threads[THREAD_COUNT];
-  thr_state st[THREAD_COUNT];
+  thr_state *st;
   unsigned n;
   float total_op_sec;
   volatile unsigned all_start=0;
+  unsigned ncores;
+  unsigned threads_count;
+
+  ncores = sysconf( _SC_NPROCESSORS_ONLN );
+  if( ncores == -1 )  {
+    ncores = DEFAULT_THREAD_COUNT;
+    printf("Cannot determine the number of cores; assume %d\n", ncores);
+  }
+  threads_count = ncores;
+
+  st = malloc( sizeof(thr_state) * threads_count );
+  if( st == NULL )  {
+    printf("Out of memory\n");
+    return 1;
+  }
+
+  printf("Will use %d threads\n", threads_count);
 
   memset(mysecret, 42, 32);
   mysecret[0] &= 248;
@@ -82,13 +100,13 @@ main() {
   mysecret[31] |= 64;
 
   /* start the threads */
-  for( i=0; i<THREAD_COUNT; i++ )  {
+  for( i=0; i<threads_count; i++ )  {
     st[i].i = i;
     st[i].secret = mysecret;
     st[i].all_start = &all_start;
     st[i].exited = 0;
 
-    if(pthread_create( threads+i, NULL, run, st+i )) {
+    if(pthread_create( &st[i].thread_id, NULL, run, st+i )) {
       fprintf(stderr, "Error creating thread %d\n", i);
       return 1;
     }
@@ -98,15 +116,15 @@ main() {
   all_start = 1;	/* go! */
 
   /* wait for all the threads to finish */
-  for( n=0; n!=THREAD_COUNT; usleep(1) )  {
+  for( n=0; n!=threads_count; usleep(1) )  {
     n=0;
-    for( i=0; i<THREAD_COUNT; i++ )  {
+    for( i=0; i<threads_count; i++ )  {
       n += st[i].exited;
     }
   }
 
   total_op_sec=0;
-  for( i=0; i<THREAD_COUNT; i++ )  {
+  for( i=0; i<threads_count; i++ )  {
     printf("thread %d: %g op/sec in %.02f sec\n", i+1, st[i].op_sec, st[i].total_sec);
     total_op_sec += st[i].op_sec;
   }
