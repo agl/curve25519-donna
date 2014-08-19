@@ -1,19 +1,21 @@
-Derived from https://github.com/agl/curve25519-donna
-
 This project provides a method to test the performance of Curve25519 on the entire CPU, as opposed to a single thread, approximating the performance of a fully loaded server.
 
 To run:
   make speed-curve25519-donna-c64-threaded && ./speed-curve25519-donna-c64-threaded
 
 Output:
-  Will use 4 threads
+  Will use 5 threads
   Waiting in thread 2 ...
-  Waiting in thread 1 ...
-  Waiting in thread 4 ...
+  Waiting in thread 5 ...
   Waiting in thread 3 ...
-  thread 1: 14954.1 op/sec in 6.69 sec
-  thread 2: 14645.4 op/sec in 6.83 sec
-  thread 3: 14278.8 op/sec in 7.00 sec
-  thread 4: 14628.6 op/sec in 6.84 sec
-  Total for CPU: 58506.9 op/sec
+  Waiting in thread 4 ...
+  Waiting in thread 1 ...
+  thread 1: 11706.7 op/sec in 8.54 sec
+  thread 2: 11674 op/sec in 8.57 sec
+  thread 3: 11584.5 op/sec in 8.63 sec
+  thread 4: 12096.5 op/sec in 8.27 sec
+  thread 5: 11876.3 op/sec in 8.42 sec
+  Total for CPU: 58938.1 op/sec
 
+
+Derived from https://github.com/agl/curve25519-donna

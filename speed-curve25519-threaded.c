@@ -84,7 +84,7 @@ main() {
     ncores = DEFAULT_THREAD_COUNT;
     printf("Cannot determine the number of cores; assume %d\n", ncores);
   }
-  threads_count = ncores;
+  threads_count = ncores+1;
 
   st = malloc( sizeof(thr_state) * threads_count );
   if( st == NULL )  {
