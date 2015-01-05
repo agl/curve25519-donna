@@ -21,6 +21,19 @@ time_now() {
   return ret;
 }
 
+/* ticks - not tested on anything other than x86 */
+static uint64_t
+cycles_now(void) {
+        #if defined(__GNUC__)
+                uint32_t lo, hi;
+                __asm__ __volatile__("rdtsc" : "=a" (lo), "=d" (hi));
+                return ((uint64_t)lo | ((uint64_t)hi << 32));
+	#else
+		return 0;	/* Undefined for now; should be obvious in the output */
+        #endif
+}
+
+
 int
 main() {
   static const unsigned char basepoint[32] = {9};
@@ -28,6 +41,7 @@ main() {
   unsigned i;
   uint64_t start, end;
   const unsigned iterations = 100000;
+  uint64_t start_c, end_c;
 
   memset(mysecret, 42, 32);
   mysecret[0] &= 248;
@@ -40,12 +54,17 @@ main() {
   }
 
   start = time_now();
+  start_c = cycles_now();
   for (i = 0; i < iterations; ++i) {
     curve25519_donna(mypublic, mysecret, basepoint);
   }
   end = time_now();
+  end_c = cycles_now();
 
-  printf("%lu us, %g op/s\n", (unsigned long) ((end - start) / iterations), iterations*1000000. / (end - start) );
+  printf("%lu us, %g op/s, %lu cycles/op\n", 
+	(unsigned long) ((end - start) / iterations), 
+	iterations*1000000. / (end - start), 
+	(unsigned long)((end_c-start_c)/iterations) );
 
   return 0;
 }
