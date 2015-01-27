@@ -1,10 +1,15 @@
 #! /usr/bin/python
 
-from subprocess import Popen, PIPE
 from distutils.core import setup, Extension
+import versioneer
 
-version = Popen(["git", "describe", "--tags"], stdout=PIPE).communicate()[0]\
-          .strip().decode("utf8")
+versioneer.VCS = "git"
+versioneer.versionfile_source = "python-src/curve25519/_version.py"
+versioneer.versionfile_build = "curve25519/_version.py"
+versioneer.tag_prefix = ""
+versioneer.parentdir_prefix = "curve25519-donna-"
+cmdclass = {}
+cmdclass.update(versioneer.get_cmdclass())
 
 ext_modules = [Extension("curve25519._curve25519",
                          ["python-src/curve25519/curve25519module.c",
@@ -26,7 +31,7 @@ http://code.google.com/p/curve25519-donna/
 """
 
 setup(name="curve25519-donna",
-      version=version,
+      version=versioneer.get_version(),
       description=short_description,
       long_description=long_description,
       author="Brian Warner",
@@ -35,4 +40,5 @@ setup(name="curve25519-donna",
       packages=["curve25519", "curve25519.test"],
       package_dir={"curve25519": "python-src/curve25519"},
       ext_modules=ext_modules,
+      cmdclass=cmdclass,
       )

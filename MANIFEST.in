@@ -1,0 +1,3 @@
+include versioneer.py
+include python-src/curve25519/_version.py
+include LICENSE.md
