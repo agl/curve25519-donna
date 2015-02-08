@@ -29,11 +29,11 @@ main()
   curve25519_donna(out1, scalar, point1);
   curve25519_donna(out2, scalar, point2);
 
-  if (0 != memcmp(out1, out2, sizeof(out1))) {
-    fprintf(stderr, "Top bit ignored.\n");
+  if (0 == memcmp(out1, out2, sizeof(out1))) {
+    fprintf(stderr, "Top bit not ignored.\n");
     return 1;
   }
-  fprintf(stderr, "Top bit respected.\n");
 
+  fprintf(stderr, "Top bit correctly ignored.\n");
   return 0;
 }
