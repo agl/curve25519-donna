@@ -49,6 +49,6 @@ For more information, see [djb's page](http://cr.yp.to/ecdh.html).
 If you run `make`, two .a archives will be built, similar to djb's curve25519
 code. Alternatively, read on:
 
-## Arduino
+## ESP8266
 
-If you're interested in running curve25519 on an Arduino, see [this project](https://github.com/CSSHL/ESP8266-Arduino-cryptolibs).
+If you're interested in running curve25519 on an ESP8266, see [this project](https://github.com/CSSHL/ESP8266-Arduino-cryptolibs).
