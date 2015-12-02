@@ -697,6 +697,58 @@ static void fmonty(limb *x2, limb *z2,  /* output 2Q */
   /* |z2|i| < 2^26 */
 }
 
+/* As fmonty, but qpmp is always 9. */
+static void fmonty_bp(limb *x2, limb *z2,  /* output 2Q */
+                   limb *x3, limb *z3,  /* output Q + Q' */
+                   limb *x, limb *z,    /* input Q */
+                   limb *xprime, limb *zprime  /* input Q' */
+                      ) {
+  limb origx[10], origxprime[10], zzz[19], xx[19], zz[19], xxprime[19],
+        zzprime[19], zzzprime[19], xxxprime[19];
+
+  //  const limb nine[19] = {9};
+
+  memcpy(origx, x, 10 * sizeof(limb));
+  fsum(x, z);
+  fdifference(z, origx);  // does x - z
+
+  memcpy(origxprime, xprime, sizeof(limb) * 10);
+  fsum(xprime, zprime);
+  fdifference(zprime, origxprime);
+  fproduct(xxprime, xprime, z);
+  fproduct(zzprime, x, zprime);
+  freduce_degree(xxprime);
+  freduce_coefficients(xxprime);
+  freduce_degree(zzprime);
+  freduce_coefficients(zzprime);
+  memcpy(origxprime, xxprime, sizeof(limb) * 10);
+  fsum(xxprime, zzprime);
+  fdifference(zzprime, origxprime);
+  fsquare(xxxprime, xxprime);
+  fsquare(zzzprime, zzprime);
+  fscalar_product(zzprime, zzzprime, 9); /* Multiply by the basepoint */
+  freduce_coefficients(zzprime);
+
+  memcpy(x3, xxxprime, sizeof(limb) * 10);
+  memcpy(z3, zzprime, sizeof(limb) * 10);
+
+  fsquare(xx, x);
+  fsquare(zz, z);
+  fproduct(x2, xx, zz);
+  freduce_degree(x2);
+  freduce_coefficients(x2);
+  fdifference(zz, xx);  // does zz = xx - zz
+  memset(zzz + 10, 0, sizeof(limb) * 9);
+  fscalar_product(zzz, zz, 121665);
+  /* No need to call freduce_degree here:
+     fscalar_product doesn't increase the degree of its input. */
+  freduce_coefficients(zzz);
+  fsum(zzz, xx);
+  fproduct(z2, zz, zzz);
+  freduce_degree(z2);
+  freduce_coefficients(z2);
+}
+
 /* Conditionally swap two reduced-form limb arrays if 'iswap' is 1, but leave
  * them unchanged if 'iswap' is 0.  Runs in data-invariant time to avoid
  * side-channel attacks.
@@ -746,6 +798,56 @@ cmult(limb *resultx, limb *resultz, const u8 *n, const limb *q) {
              nqx, nqz,
              nqpqx, nqpqz,
              q);
+      swap_conditional(nqx2, nqpqx2, bit);
+      swap_conditional(nqz2, nqpqz2, bit);
+
+      t = nqx;
+      nqx = nqx2;
+      nqx2 = t;
+      t = nqz;
+      nqz = nqz2;
+      nqz2 = t;
+      t = nqpqx;
+      nqpqx = nqpqx2;
+      nqpqx2 = t;
+      t = nqpqz;
+      nqpqz = nqpqz2;
+      nqpqz2 = t;
+
+      byte <<= 1;
+    }
+  }
+
+  memcpy(resultx, nqx, sizeof(limb) * 10);
+  memcpy(resultz, nqz, sizeof(limb) * 10);
+}
+
+/* Calculates nQ where Q is the x-coordinate of a point on the curve
+ *
+ *   resultx/resultz: the x coordinate of the resulting curve point (short form)
+ *   n: a little endian, 32-byte number
+ *   q: a point of the curve (short form)
+ */
+static void
+cmult_bp(limb *resultx, limb *resultz, const u8 *n) {
+  limb a[19] = {9}, b[19] = {1}, c[19] = {1}, d[19] = {0};
+  limb *nqpqx = a, *nqpqz = b, *nqx = c, *nqz = d, *t;
+  limb e[19] = {0}, f[19] = {1}, g[19] = {0}, h[19] = {1};
+  limb *nqpqx2 = e, *nqpqz2 = f, *nqx2 = g, *nqz2 = h;
+
+  unsigned i, j;
+
+  for (i = 0; i < 32; ++i) {
+    u8 byte = n[31 - i];
+    for (j = 0; j < 8; ++j) {
+      const limb bit = byte >> 7;
+
+      swap_conditional(nqx, nqpqx, bit);
+      swap_conditional(nqz, nqpqz, bit);
+      fmonty_bp(nqx2, nqz2,
+             nqpqx2, nqpqz2,
+             nqx, nqz,
+             nqpqx, nqpqz);
       swap_conditional(nqx2, nqpqx2, bit);
       swap_conditional(nqz2, nqpqz2, bit);
 
@@ -855,6 +957,34 @@ curve25519_donna(u8 *mypublic, const u8 *secret, const u8 *basepoint) {
   cmult(x, z, e, bp);
   crecip(zmone, z);
   fmul(z, x, zmone);
+  fcontract(mypublic, z);
+  return 0;
+}
+
+int curve25519_base_donna(u8 *, const u8 *);
+
+/* As curve25519_donna, but use the basepoint 9, to generate a public
+ * key from a secret key.
+ *
+ * This implementation is constant-time (in that it is independent of
+ * the value of 'secret') but it does *not* have the same runtime as
+ * computing "u8 bp[32] = {9}; curve25519_donna(mypublic, secret, bp);".
+ */
+int
+curve25519_base_donna(u8 *mypublic, const u8 *secret) {
+  limb x[10], z[11], zmone[10];
+  uint8_t e[32];
+  int i;
+
+  for (i = 0; i < 32; ++i) e[i] = secret[i];
+  e[0] &= 248;
+  e[31] &= 127;
+  e[31] |= 64;
+
+  cmult_bp(x, z, e);
+  crecip(zmone, z);
+  fmul(z, x, zmone);
+  freduce_coefficients(z);
   fcontract(mypublic, z);
   return 0;
 }

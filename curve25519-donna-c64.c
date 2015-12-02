@@ -323,6 +323,42 @@ fmonty(limb *x2, limb *z2, /* output 2Q */
   fmul(z2, zz, zzz);
 }
 
+/* As fmonty, but qpmp is always 9. */
+static void
+fmonty_bp(limb *x2, limb *z2, /* output 2Q */
+       limb *x3, limb *z3, /* output Q + Q' */
+       limb *x, limb *z,   /* input Q */
+       limb *xprime, limb *zprime /* input Q' */
+          ) {
+  limb origx[5], origxprime[5], zzz[5], xx[5], zz[5], xxprime[5],
+        zzprime[5], zzzprime[5];
+
+  memcpy(origx, x, 5 * sizeof(limb));
+  fsum(x, z);
+  fdifference_backwards(z, origx);  // does x - z
+
+  memcpy(origxprime, xprime, sizeof(limb) * 5);
+  fsum(xprime, zprime);
+  fdifference_backwards(zprime, origxprime);
+  fmul(xxprime, xprime, z);
+  fmul(zzprime, x, zprime);
+  memcpy(origxprime, xxprime, sizeof(limb) * 5);
+  fsum(xxprime, zzprime);
+  fdifference_backwards(zzprime, origxprime);
+  fsquare_times(x3, xxprime, 1);
+  fsquare_times(zzzprime, zzprime, 1);
+  fscalar_product(z3, zzzprime, 9);
+
+  fsquare_times(xx, x, 1);
+  fsquare_times(zz, z, 1);
+  fmul(x2, xx, zz);
+  fdifference_backwards(zz, xx);  // does zz = xx - zz
+  fscalar_product(zzz, zz, 121665);
+  fsum(zzz, xx);
+  fmul(z2, zz, zzz);
+}
+
+
 // -----------------------------------------------------------------------------
 // Maybe swap the contents of two limb arrays (@a and @b), each @len elements
 // long. Perform the swap iff @swap is non-zero.
@@ -395,6 +431,57 @@ cmult(limb *resultx, limb *resultz, const u8 *n, const limb *q) {
   memcpy(resultz, nqz, sizeof(limb) * 5);
 }
 
+/* Calculates nB where B is the basepoint (x=9) on the curve.
+ *
+ *   resultx/resultz: the x coordinate of the resulting curve point (short form)
+ *   n: a little endian, 32-byte number
+ *   q: a point of the curve (short form)
+ */
+static void
+cmult_bp(limb *resultx, limb *resultz, const u8 *n) {
+  limb a[5] = {9}, b[5] = {1}, c[5] = {1}, d[5] = {0};
+  limb *nqpqx = a, *nqpqz = b, *nqx = c, *nqz = d, *t;
+  limb e[5] = {0}, f[5] = {1}, g[5] = {0}, h[5] = {1};
+  limb *nqpqx2 = e, *nqpqz2 = f, *nqx2 = g, *nqz2 = h;
+
+  unsigned i, j;
+
+  //memcpy(nqpqx, q, sizeof(limb) * 5);
+
+  for (i = 0; i < 32; ++i) {
+    u8 byte = n[31 - i];
+    for (j = 0; j < 8; ++j) {
+      const limb bit = byte >> 7;
+
+      swap_conditional(nqx, nqpqx, bit);
+      swap_conditional(nqz, nqpqz, bit);
+      fmonty_bp(nqx2, nqz2,
+             nqpqx2, nqpqz2,
+             nqx, nqz,
+             nqpqx, nqpqz);
+      swap_conditional(nqx2, nqpqx2, bit);
+      swap_conditional(nqz2, nqpqz2, bit);
+
+      t = nqx;
+      nqx = nqx2;
+      nqx2 = t;
+      t = nqz;
+      nqz = nqz2;
+      nqz2 = t;
+      t = nqpqx;
+      nqpqx = nqpqx2;
+      nqpqx2 = t;
+      t = nqpqz;
+      nqpqz = nqpqz2;
+      nqpqz2 = t;
+
+      byte <<= 1;
+    }
+  }
+
+  memcpy(resultx, nqx, sizeof(limb) * 5);
+  memcpy(resultz, nqz, sizeof(limb) * 5);
+}
 
 // -----------------------------------------------------------------------------
 // Shamelessly copied from djb's code, tightened a little
@@ -442,6 +529,33 @@ curve25519_donna(u8 *mypublic, const u8 *secret, const u8 *basepoint) {
 
   fexpand(bp, basepoint);
   cmult(x, z, e, bp);
+  crecip(zmone, z);
+  fmul(z, x, zmone);
+  fcontract(mypublic, z);
+  return 0;
+}
+
+int curve25519_base_donna(u8 *, const u8 *);
+
+/* As curve25519_donna, but use the basepoint 9, to generate a public
+ * key from a secret key.
+ *
+ * This implementation is constant-time (in that it is independent of
+ * the value of 'secret') but it does *not* have the same runtime as
+ * computing "u8 bp[32] = {9}; curve25519_donna(mypublic, secret, bp);".
+ */
+int
+curve25519_base_donna(u8 *mypublic, const u8 *secret) {
+  limb x[5], z[5], zmone[5];
+  uint8_t e[32];
+  int i;
+
+  for (i = 0;i < 32;++i) e[i] = secret[i];
+  e[0] &= 248;
+  e[31] &= 127;
+  e[31] |= 64;
+
+  cmult_bp(x, z, e);
   crecip(zmone, z);
   fmul(z, x, zmone);
   fcontract(mypublic, z);

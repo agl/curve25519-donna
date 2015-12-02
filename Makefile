@@ -3,7 +3,7 @@ CFLAGS_32=-m32
 
 targets: curve25519-donna.a curve25519-donna-c64.a
 
-test: test-donna test-donna-c64
+test: test-donna test-donna-c64 test-donna-bp test-donna-bp-c64
 
 clean:
 	rm -f *.o *.a *.pp test-curve25519-donna test-curve25519-donna-c64 speed-curve25519-donna speed-curve25519-donna-c64 test-noncanon-curve25519-donna test-noncanon-curve25519-donna-c64
@@ -28,11 +28,23 @@ test-donna: test-curve25519-donna
 test-donna-c64: test-curve25519-donna-c64
 	./test-curve25519-donna-c64 | head -123456 | tail -1
 
+test-donna-bp: test-curve25519-donna-bp
+	./test-curve25519-donna-bp | tail -1
+
+test-donna-bp-c64: test-curve25519-donna-bp-c64
+	./test-curve25519-donna-bp-c64 | tail -1
+
 test-curve25519-donna: test-curve25519.c curve25519-donna.a
 	gcc -o test-curve25519-donna test-curve25519.c curve25519-donna.a $(CFLAGS) $(CFLAGS_32)
 
 test-curve25519-donna-c64: test-curve25519.c curve25519-donna-c64.a
 	gcc -o test-curve25519-donna-c64 test-curve25519.c curve25519-donna-c64.a $(CFLAGS)
+
+test-curve25519-donna-bp: test-curve25519-bp.c curve25519-donna.a
+	gcc -o test-curve25519-donna-bp test-curve25519-bp.c curve25519-donna.a $(CFLAGS) -m32
+
+test-curve25519-donna-bp-c64: test-curve25519-bp.c curve25519-donna-c64.a
+	gcc -o test-curve25519-donna-bp-c64 test-curve25519-bp.c curve25519-donna-c64.a $(CFLAGS)
 
 speed-curve25519-donna: speed-curve25519.c curve25519-donna.a
 	gcc -o speed-curve25519-donna speed-curve25519.c curve25519-donna.a $(CFLAGS) $(CFLAGS_32)
