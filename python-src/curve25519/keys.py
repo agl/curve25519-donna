@@ -28,6 +28,15 @@ class Private:
     def get_public(self):
         return Public(_curve25519.make_public(self.private))
 
+    def get_shared_public(self, public):
+        """
+        Returns the established DH key as a Public instance.
+        """
+        if not isinstance(public, Public):
+            raise ValueError("'public' must be an instance of Public")
+        shared = _curve25519.make_shared(self.private, public.public)
+        return Public(shared)
+
     def get_shared_key(self, public, hashfunc=None):
         if not isinstance(public, Public):
             raise ValueError("'public' must be an instance of Public")
