@@ -1,0 +1,1 @@
+python-src/curve25519/_version.py export-subst
