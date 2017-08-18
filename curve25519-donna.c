@@ -469,7 +469,7 @@ static s32 s32_gte(s32 a, s32 b) {
  *
  * On entry: |input_limbs[i]| < 2^26 */
 static void
-fcontract(u8 *output, limb *input_limbs) {
+fcontract(u8 *output, const limb *input_limbs) {
   int i;
   int j;
   s32 input[10];
@@ -682,7 +682,7 @@ static void fmonty(limb *x2, limb *z2,  /* output 2Q */
   fdifference(zz, xx);  // does zz = xx - zz
   /* |zz[i]| < 2^27 */
   memset(zzz + 10, 0, sizeof(limb) * 9);
-  fscalar_product(zzz, zz, 121665);
+  fscalar_product(zzz, zz, 121665L);
   /* |zzz[i]| < 2^(27+17) */
   /* No need to call freduce_degree here:
      fscalar_product doesn't increase the degree of its input. */
